@@ -31,7 +31,7 @@ const StartScreen: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 w-72">
         {/* 게임 시작 */}
         <button
-          onClick={() => setScreen('modeSelect')}
+          onClick={() => setScreen('curriculumSelect')}
           className="py-4 px-8 rounded-2xl text-2xl font-bold text-white shadow-lg
                      transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110"
           style={{ backgroundColor: '#F5C542' }}

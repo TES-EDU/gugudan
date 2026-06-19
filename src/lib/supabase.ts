@@ -1,0 +1,368 @@
+import { createClient } from '@supabase/supabase-js';
+
+// VOCATEST와 동일한 Supabase 프로젝트
+const supabaseUrl = 'https://pujiailalhhytbxvsrxj.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1amlhaWxhbGhoeXRieHZzcnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NzQ0MDcsImV4cCI6MjA4NDU1MDQwN30.Xvg5hXg_dINFkps4yoSJ0LEIxDLXMhDPSOVheIPpgHk';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// ============================================
+// Types
+// ============================================
+
+export interface MathResultRow {
+  id?: string;
+  user_name: string;
+  book_title: string;       // "산성비 연산 게임"
+  unit_title: string;       // "G1_C01_U01" 등
+  unit_display_name: string; // "+1 릴레이" 등
+  grade_id: string;         // "G1", "G2", "G3"
+  total_questions: number;
+  correct_count: number;
+  wrong_count: number;
+  missed_count: number;
+  score: number;            // 점수 (게임 스코어)
+  accuracy: number;         // 정답률 (0~100)
+  max_combo: number;
+  time_seconds: number;
+  correct_answers: MathCorrectAnswer[];
+  incorrect_answers: MathIncorrectAnswer[];
+  student_id?: string | null;
+  academy_id?: string | null;
+  created_at?: string;
+}
+
+export interface MathCorrectAnswer {
+  expression: string;
+  answer: number;
+  unitId: string;
+}
+
+export interface MathIncorrectAnswer {
+  expression: string;
+  correctAnswer: number;
+  userAnswer: number | null;
+  result: 'wrong' | 'missed';
+  unitId: string;
+}
+
+export interface StudentRow {
+  id: string;
+  name: string;
+  grade: string | null;
+  academy_id: string | null;
+  created_at?: string;
+}
+
+export interface AcademyRow {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ClassRow {
+  id: string;
+  name: string;
+  student_ids: string[];
+  test_code: string | null;
+  academy_id?: string;
+}
+
+// ============================================
+// Academy / Session Storage
+// ============================================
+
+export function setCurrentAcademy(academy: AcademyRow) {
+  sessionStorage.setItem('currentAcademy', JSON.stringify(academy));
+}
+
+export function getCurrentAcademy(): AcademyRow | null {
+  const stored = sessionStorage.getItem('currentAcademy');
+  return stored ? JSON.parse(stored) : null;
+}
+
+export function getCurrentAcademyId(): string | null {
+  return getCurrentAcademy()?.id ?? null;
+}
+
+// ============================================
+// Teacher Auth (Google OAuth)
+// ============================================
+
+export async function teacherLoginWithGoogle() {
+  const redirectUrl = window.location.origin + window.location.pathname + '?admin=true';
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: redirectUrl },
+  });
+  return { data, error };
+}
+
+export async function teacherLogout() {
+  sessionStorage.removeItem('currentAcademy');
+  sessionStorage.removeItem('teacher_auth');
+  const { error } = await supabase.auth.signOut();
+  return { error };
+}
+
+export async function getTeacherSession() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  return { session, error };
+}
+
+/** Get academies that the current logged-in teacher belongs to */
+export async function getMyAcademies(): Promise<(AcademyRow & { role: string })[]> {
+  const { session } = await getTeacherSession();
+  if (!session?.user) return [];
+
+  const { data, error } = await supabase
+    .from('academy_teachers')
+    .select('academy_id, role, academies(id, name, code)')
+    .eq('user_id', session.user.id);
+
+  if (error || !data) return [];
+
+  return data
+    .filter((d: Record<string, unknown>) => d.academies)
+    .map((d: Record<string, unknown>) => {
+      const academy = d.academies as Record<string, unknown>;
+      return {
+        id: academy.id as string,
+        name: academy.name as string,
+        code: academy.code as string,
+        role: d.role as string,
+      };
+    });
+}
+
+// ============================================
+// Academy Code Lookup (Student-side)
+// ============================================
+
+export interface CodeLookupResult {
+  type: 'academy' | 'class';
+  academy: AcademyRow;
+  classData?: ClassRow;
+}
+
+/** Look up a code: first check classes.test_code, then academies.code */
+export async function lookupCode(code: string): Promise<CodeLookupResult | null> {
+  const upperCode = code.trim().toUpperCase();
+
+  // 1. Check classes.test_code
+  const { data: classRow } = await supabase
+    .from('classes')
+    .select('id, name, student_ids, test_code')
+    .eq('test_code', upperCode)
+    .maybeSingle();
+
+  if (classRow) {
+    const { data: academyData } = await supabase
+      .from('academies')
+      .select('id, name, code')
+      .limit(1)
+      .single();
+
+    if (academyData) {
+      return {
+        type: 'class',
+        academy: academyData,
+        classData: classRow,
+      };
+    }
+  }
+
+  // 2. Check academies.code
+  const { data: academyRow } = await supabase
+    .from('academies')
+    .select('id, name, code')
+    .eq('code', upperCode)
+    .maybeSingle();
+
+  if (academyRow) {
+    return { type: 'academy', academy: academyRow };
+  }
+
+  return null;
+}
+
+// ============================================
+// Student Functions (shared with Speaking App)
+// ============================================
+
+export async function findStudent(name: string, academyId: string): Promise<StudentRow | null> {
+  const { data } = await supabase
+    .from('students')
+    .select('*')
+    .eq('name', name.trim())
+    .eq('academy_id', academyId)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  return data && data.length > 0 ? data[0] : null;
+}
+
+export async function createStudentProfile(name: string, academyId: string): Promise<StudentRow | null> {
+  const { data, error } = await supabase
+    .from('students')
+    .insert([{ name: name.trim(), academy_id: academyId }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to create student:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function addStudentToClass(classId: string, studentId: string) {
+  const { data: classRow } = await supabase
+    .from('classes')
+    .select('student_ids')
+    .eq('id', classId)
+    .single();
+
+  if (!classRow) return;
+
+  const ids: string[] = classRow.student_ids || [];
+  if (!ids.includes(studentId)) {
+    await supabase
+      .from('classes')
+      .update({ student_ids: [...ids, studentId] })
+      .eq('id', classId);
+  }
+}
+
+// ============================================
+// Math Results
+// ============================================
+
+export async function saveMathResult(
+  result: Omit<MathResultRow, 'id' | 'created_at'>
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('math_results')
+    .insert([result])
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Failed to save math result:', error);
+    return null;
+  }
+  return data.id;
+}
+
+export async function getMathResult(id: string): Promise<MathResultRow | null> {
+  const { data, error } = await supabase
+    .from('math_results')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Failed to get math result:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function getAllMathResults(academyId?: string | null): Promise<MathResultRow[]> {
+  let query = supabase
+    .from('math_results')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (academyId) {
+    query = query.or(`academy_id.eq.${academyId},academy_id.is.null`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Failed to get math results:', error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function deleteStudentMathResults(userName: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('math_results')
+    .delete()
+    .eq('user_name', userName);
+  if (error) { console.error('Failed to delete student math results:', error); return false; }
+  return true;
+}
+
+export async function getStudentMathResults(userName: string): Promise<MathResultRow[]> {
+  const { data, error } = await supabase
+    .from('math_results')
+    .select('*')
+    .eq('user_name', userName)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('Failed to get student math results:', error); return []; }
+  return data ?? [];
+}
+
+// ============================================
+// Class Management (for admin)
+// ============================================
+
+export async function getClasses(_academyId?: string | null): Promise<ClassRow[]> {
+  const query = supabase.from('classes').select('*').order('name');
+  const { data, error } = await query;
+  if (error) { console.error('Failed to get classes:', error); return []; }
+  return data ?? [];
+}
+
+export async function createClass(name: string, studentIds: string[] = []): Promise<ClassRow | null> {
+  const testCode = generateTestCode();
+  const { data, error } = await supabase
+    .from('classes')
+    .insert([{ name, student_ids: studentIds, type: 'group', test_code: testCode }])
+    .select()
+    .single();
+  if (error) { console.error('Failed to create class:', error); return null; }
+  return data;
+}
+
+export async function updateClassStudents(classId: string, studentIds: string[]) {
+  const { error } = await supabase
+    .from('classes')
+    .update({ student_ids: studentIds })
+    .eq('id', classId);
+  if (error) console.error('Failed to update class:', error);
+  return !error;
+}
+
+export async function deleteClass(classId: string) {
+  const { error } = await supabase.from('classes').delete().eq('id', classId);
+  if (error) console.error('Failed to delete class:', error);
+  return !error;
+}
+
+function generateTestCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'T';
+  for (let i = 0; i < 5; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// ============================================
+// Student Management (for admin)
+// ============================================
+
+export async function getStudents(academyId?: string | null): Promise<StudentRow[]> {
+  let query = supabase.from('students').select('*').order('created_at', { ascending: false });
+  if (academyId) {
+    query = query.eq('academy_id', academyId);
+  }
+  const { data, error } = await query;
+  if (error) { console.error('Failed to get students:', error); return []; }
+  return data ?? [];
+}

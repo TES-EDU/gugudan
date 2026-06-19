@@ -56,7 +56,7 @@ const ProblemCard: React.FC<ProblemCardProps> = ({ problem }) => {
           className="text-xl md:text-2xl lg:text-3xl font-bold"
           style={{ color: '#776757' }}
         >
-          {problem.expression.replace('=', '').trim()}
+          {problem.expression}
         </span>
       </div>
 

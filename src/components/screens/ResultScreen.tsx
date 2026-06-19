@@ -1,25 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore';
-import { analyzeWeakTags, calcWrongRate } from '../../game/scoring';
+import { analyzeWeakTags } from '../../game/scoring';
+import { getUnitById } from '../../data/curriculum';
+import { saveMathResult } from '../../lib/supabase';
+import type { MathCorrectAnswer, MathIncorrectAnswer } from '../../lib/supabase';
+import type { GradeId } from '../../game/types';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
-// Tag label map for Korean display
 const TAG_LABELS: Record<string, string> = {
-  addition: '덧셈',
-  subtraction: '뺄셈',
-  multiplication: '곱셈',
-  division: '나눗셈',
-  mixed: '혼합',
-  one_digit: '한 자리',
-  two_digit: '두 자리',
-  three_digit: '세 자리',
-  carry: '받아올림',
-  borrow: '받아내림',
-  no_remainder: '나머지 없음',
-  multiplication_table: '구구단',
-  large_number: '큰 수',
-  order_of_operations: '연산 순서',
+  addition: '덧셈', subtraction: '뺄셈', multiplication: '곱셈', division: '나눗셈',
+  mixed: '혼합', carry: '받아올림', borrow: '받아내림', no_remainder: '나머지 없음',
+  order_of_operations: '연산 순서', plus_one: '+1 릴레이', minus_one: '-1 릴레이',
+  zero: '0 연산', complement_10: '10의 보수', from_10: '10에서 빼기',
+  three_term: '3수 연산', add_sub: '덧뺄셈 혼합', doubles: '같은 수 더하기',
+  blank: '빈칸 문제', tens_mul: '몇십 곱셈', special: '특수 암산',
+  two_digit: '두 자리', three_digit: '세 자리',
 };
 
 const ResultScreen: React.FC = () => {
@@ -29,129 +25,312 @@ const ResultScreen: React.FC = () => {
   const missedCount = useGameStore((s) => s.missedCount);
   const maxCombo = useGameStore((s) => s.maxCombo);
   const answeredProblems = useGameStore((s) => s.answeredProblems);
+  const missedProblems = useGameStore((s) => s.missedProblems);
+  const levelId = useGameStore((s) => s.levelId);
   const resetGame = useGameStore((s) => s.resetGame);
   const startGame = useGameStore((s) => s.startGame);
   const setScreen = useGameStore((s) => s.setScreen);
 
-  const wrongRate = calcWrongRate(correctCount, wrongCount);
+  const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle');
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showWrongList, setShowWrongList] = useState(true);
+  const [showCorrectList, setShowCorrectList] = useState(false);
+  const savedRef = useRef(false);
+  const shareUrlRef = useRef<string | null>(null);
+
+  const unit = getUnitById(levelId);
+  const gradeId: GradeId = (unit?.gradeId ?? 'G1') as GradeId;
+  const unitDisplayName = unit ? unit.title : levelId;
+  const chapterTitle = gradeId;
+
+  const totalAll = correctCount + wrongCount + missedCount;
+  const accuracy = totalAll > 0 ? Math.round((correctCount / totalAll) * 100) : 0;
+
   const weakTags = analyzeWeakTags(answeredProblems);
-  const significantWeakTags = weakTags.filter((t) => t.rate > 0 && t.total >= 2).slice(0, 5);
+  const semanticWeakTags = weakTags
+    .filter((t) => !t.tag.startsWith('grade:') && !t.tag.startsWith('chapter:') && !t.tag.startsWith('unit:'))
+    .filter((t) => t.rate > 0 && t.total >= 2).slice(0, 5);
 
-  const handleRetry = () => {
-    resetGame();
-    startGame();
+  const wrongItems = [
+    ...answeredProblems.filter(p => p.result === 'wrong')
+      .map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, kind: 'wrong' as const })),
+    ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, kind: 'missed' as const })),
+  ];
+
+  const correctItems = answeredProblems.filter(p => p.result === 'correct')
+    .map(p => ({ expression: p.expression, answer: p.correctAnswer }));
+
+  // Supabase 자동 저장
+  useEffect(() => {
+    if (savedRef.current) return;
+    savedRef.current = true;
+    const ca: MathCorrectAnswer[] = correctItems.map(p => ({ expression: p.expression, answer: p.answer, unitId: levelId }));
+    const ia: MathIncorrectAnswer[] = [
+      ...answeredProblems.filter(p => p.result === 'wrong')
+        .map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, result: 'wrong' as const, unitId: levelId })),
+      ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, result: 'missed' as const, unitId: levelId })),
+    ];
+    saveMathResult({
+      user_name: '학생', book_title: '산성비 연산 게임', unit_title: levelId,
+      unit_display_name: `${chapterTitle} — ${unitDisplayName}`, grade_id: gradeId,
+      total_questions: totalAll, correct_count: correctCount, wrong_count: wrongCount,
+      missed_count: missedCount, score, accuracy, max_combo: maxCombo, time_seconds: 180,
+      correct_answers: ca, incorrect_answers: ia,
+    }).then(id => {
+      if (id) {
+        const url = `${window.location.origin}${window.location.pathname}?report=${id}`;
+        shareUrlRef.current = url; setShareUrl(url);
+      }
+    });
+  }, []);
+
+  const handleShare = async () => {
+    if (shareState === 'saving') return;
+    if (shareUrl) { await navigator.clipboard.writeText(shareUrl); setShareState('copied'); setTimeout(() => setShareState('idle'), 2000); return; }
+    setShareState('saving');
+    await new Promise(r => setTimeout(r, 800));
+    const url = shareUrlRef.current;
+    if (url) { await navigator.clipboard.writeText(url); setShareState('copied'); setTimeout(() => setShareState('idle'), 2000); }
+    else { setShareState('error'); setTimeout(() => setShareState('idle'), 2000); }
   };
 
-  const handleHome = () => {
-    resetGame();
-    setScreen('start');
-  };
+  const createdAt = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-y-auto py-8"
-      style={{
-        fontFamily: FONT_FAMILY,
-        background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 50%, #FFCC80 100%)',
-      }}
-    >
-      {/* Result Card */}
-      <div className="bg-white rounded-3xl shadow-xl px-8 md:px-12 py-8 max-w-md w-[90%]">
-        {/* Title */}
-        <h1 className="text-3xl font-bold text-center mb-6" style={{ color: '#5D4E37' }}>
-          📊 결과
-        </h1>
+    <div className="fixed inset-0 overflow-y-auto flex flex-col" style={{ fontFamily: FONT_FAMILY, background: '#F1F5F9' }}>
+      {/* ===== VOCATEST 동일: 상단 헤더 ===== */}
+      <header className="bg-white shadow-sm px-4 h-14 flex items-center shrink-0 sticky top-0 z-10">
+        <h1 className="font-bold text-slate-800 truncate">성적표</h1>
+      </header>
 
-        {/* Score */}
-        <div className="text-center mb-8">
-          <span
-            className="text-6xl font-bold"
-            style={{ color: '#E8A838' }}
-          >
-            {score}
-          </span>
-          <span className="text-2xl ml-2" style={{ color: '#8B7355' }}>
-            점
-          </span>
-        </div>
+      <div className="p-4 flex-1 pb-8">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 max-w-lg mx-auto">
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <StatItem label="✅ 정답" value={correctCount} color="#4CAF50" />
-          <StatItem label="❌ 오답" value={wrongCount} color="#F44336" />
-          <StatItem label="💨 놓침" value={missedCount} color="#FF9800" />
-          <StatItem label="🔥 최고 콤보" value={maxCombo} color="#E8A838" />
-        </div>
-
-        {/* Wrong rate */}
-        <div className="text-center mb-6 px-4 py-3 rounded-xl bg-gray-50">
-          <span className="text-lg" style={{ color: '#5D4E37' }}>
-            오답률:{' '}
-            <span className="font-bold text-xl" style={{ color: wrongRate > 0.3 ? '#F44336' : '#4CAF50' }}>
-              {(wrongRate * 100).toFixed(1)}%
-            </span>
-          </span>
-        </div>
-
-        {/* Weak tags analysis */}
-        {significantWeakTags.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold mb-3" style={{ color: '#5D4E37' }}>
-              📌 취약 유형
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {significantWeakTags.map((t) => (
-                <span
-                  key={t.tag}
-                  className="px-3 py-1 rounded-full text-sm font-bold text-white"
-                  style={{
-                    backgroundColor:
-                      t.rate > 0.5 ? '#F44336' : t.rate > 0.3 ? '#FF9800' : '#FFC107',
-                  }}
-                >
-                  {TAG_LABELS[t.tag] ?? t.tag} ({(t.rate * 100).toFixed(0)}%)
-                </span>
-              ))}
+          {/* ===== 헤더: 로고 + 타이틀 (VOCATEST 동일) ===== */}
+          <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+            <div>
+              <p className="text-lg font-extrabold text-indigo-600">TES EDU</p>
+              <p className="text-xs text-slate-400">산성비 연산 게임</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-400">TES 영어학원</p>
+              <p className="text-sm text-slate-700">{chapterTitle}</p>
             </div>
           </div>
-        )}
 
-        {/* Buttons */}
-        <div className="flex flex-col gap-3">
+          {/* ===== 학생 이름 + 단원 ===== */}
+          <h2 className="text-lg font-bold text-slate-800 mb-1">
+            연산 성적표
+          </h2>
+          <p className="text-sm text-slate-400 mb-4">{unitDisplayName} · {totalAll}문제</p>
+
+          {/* ===== 나의 진도표 (VOCATEST 동일 레이아웃) ===== */}
+          <div className="border border-slate-200 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📍</span>
+                <span className="font-bold text-sm text-slate-700">나의 진도표</span>
+                <span className="text-xs text-slate-400">{gradeId} / {unitDisplayName}</span>
+              </div>
+            </div>
+
+            {/* G1 */}
+            <div className="mb-3">
+              <p className="text-xs font-bold text-slate-500 mb-1.5">G1 <span className="text-slate-400 font-normal">한 자리 / 기초 두 자리</span></p>
+              <div className="relative h-1.5 bg-slate-100 rounded-full">
+                {gradeId === 'G1' && <div className="absolute left-0 top-0 h-full rounded-full bg-amber-400" style={{ width: '30%' }} />}
+                {(gradeId === 'G2' || gradeId === 'G3') && <div className="absolute left-0 top-0 h-full rounded-full bg-emerald-400 w-full" />}
+              </div>
+            </div>
+            {/* G2 */}
+            <div className="mb-3">
+              <p className="text-xs font-bold text-slate-500 mb-1.5">G2 <span className="text-slate-400 font-normal">큰 수 / 세 자리 수</span></p>
+              <div className="relative h-1.5 bg-slate-100 rounded-full">
+                {gradeId === 'G2' && <div className="absolute left-0 top-0 h-full rounded-full bg-green-400" style={{ width: '30%' }} />}
+                {gradeId === 'G3' && <div className="absolute left-0 top-0 h-full rounded-full bg-emerald-400 w-full" />}
+              </div>
+            </div>
+            {/* G3 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-1.5">G3 <span className="text-slate-400 font-normal">곱셈 · 나눗셈 암산</span></p>
+              <div className="relative h-1.5 bg-slate-100 rounded-full">
+                {gradeId === 'G3' && <div className="absolute left-0 top-0 h-full rounded-full bg-blue-400" style={{ width: '30%' }} />}
+              </div>
+            </div>
+          </div>
+
+          {/* ===== 종합 정답률 카드 (VOCATEST 동일: 보라 그라데이션) ===== */}
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl p-5 mb-4 text-white relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full"></div>
+            <div className="relative z-10">
+              <p className="text-indigo-100 text-sm font-medium mb-1">종합 정답률</p>
+              <div className="flex items-end gap-2">
+                <span className="text-5xl font-bold">{accuracy}</span>
+                <span className="text-2xl font-bold mb-1">%</span>
+              </div>
+              <p className="text-indigo-200 text-sm mt-2">
+                총 {totalAll}문제 중 {correctCount}문제 정답
+              </p>
+            </div>
+          </div>
+
+          {/* ===== 구분/문제/정답/오답 테이블 (VOCATEST 동일) ===== */}
+          <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
+            <div className="bg-emerald-500 p-3 flex items-center gap-2 text-white">
+              <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">연산</span>
+              <span className="text-sm font-medium">{unitDisplayName}</span>
+            </div>
+            <div className="p-4 bg-white">
+              <div className="rounded-lg border border-slate-100 overflow-hidden text-sm">
+                <div className="flex bg-slate-50 border-b border-slate-100">
+                  <div className="w-1/4 p-2.5 text-slate-500 font-bold text-center">구분</div>
+                  <div className="w-1/4 p-2.5 text-slate-500 font-medium text-center">문제</div>
+                  <div className="w-1/4 p-2.5 text-slate-500 font-medium text-center">정답</div>
+                  <div className="w-1/4 p-2.5 text-slate-500 font-medium text-center">오답</div>
+                </div>
+                <div className="flex bg-indigo-50">
+                  <div className="w-1/4 p-2.5 text-indigo-700 font-bold text-center">합계</div>
+                  <div className="w-1/4 p-2.5 text-center font-bold text-indigo-600">{totalAll}</div>
+                  <div className="w-1/4 p-2.5 text-center font-bold text-emerald-600">{correctCount}</div>
+                  <div className="w-1/4 p-2.5 text-center font-bold text-red-500">{wrongItems.length}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ===== 점수 / 콤보 (추가) ===== */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+              <div className="text-2xl font-extrabold text-amber-500">{score}</div>
+              <div className="text-xs text-slate-400 mt-1">총 점수</div>
+            </div>
+            <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-100">
+              <div className="text-2xl font-extrabold text-orange-500">{maxCombo}</div>
+              <div className="text-xs text-slate-400 mt-1">🔥 최고 콤보</div>
+            </div>
+          </div>
+
+          {/* ===== 취약 유형 태그 ===== */}
+          {semanticWeakTags.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-bold text-slate-700 mb-2">📌 취약 유형</p>
+              <div className="flex flex-wrap gap-1.5">
+                {semanticWeakTags.map((t) => (
+                  <span key={t.tag} className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
+                    style={{ background: t.rate > 0.5 ? '#EF4444' : t.rate > 0.3 ? '#F59E0B' : '#FCD34D' }}>
+                    {TAG_LABELS[t.tag] ?? t.tag} ({(t.rate * 100).toFixed(0)}%)
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===== 오답 목록 (VOCATEST 동일: 접이식) ===== */}
+          {wrongItems.length > 0 && (
+            <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
+              <button
+                onClick={() => setShowWrongList(!showWrongList)}
+                className="w-full bg-slate-50 p-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-red-500">⚠️</span>
+                  <span className="font-bold text-slate-700 text-sm">오답 목록</span>
+                  <span className="text-xs text-red-500">{wrongItems.length}개</span>
+                </div>
+                <span className="text-slate-400 text-sm">{showWrongList ? '▲' : '▼'}</span>
+              </button>
+              {showWrongList && (
+                <div className="p-4 bg-white space-y-2">
+                  {wrongItems.map((w, i) => (
+                    <div key={i} className="flex items-center gap-3 text-sm bg-red-50 p-3 rounded-lg">
+                      <span className="text-red-400 shrink-0">✗</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-slate-700 truncate text-base">{w.expression}</div>
+                        <div className="text-xs text-slate-400">
+                          {w.kind === 'missed' ? '놓친 문제' : `내 답: ${w.userAnswer}`}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs shrink-0">
+                        {w.kind !== 'missed' && w.userAnswer !== null && (
+                          <span className="text-red-400 line-through">{w.userAnswer}</span>
+                        )}
+                        <span className="text-slate-300">→</span>
+                        <span className="text-emerald-600 font-bold text-sm">{w.correctAnswer}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== 정답 목록 (VOCATEST 동일: 접이식) ===== */}
+          {correctItems.length > 0 && (
+            <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
+              <button
+                onClick={() => setShowCorrectList(!showCorrectList)}
+                className="w-full bg-slate-50 p-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-500">✅</span>
+                  <span className="font-bold text-slate-700 text-sm">정답 목록</span>
+                  <span className="text-xs text-emerald-500">{correctItems.length}개</span>
+                </div>
+                <span className="text-slate-400 text-sm">{showCorrectList ? '▲' : '▼'}</span>
+              </button>
+              {showCorrectList && (
+                <div className="p-4 bg-white">
+                  <div className="flex flex-wrap gap-2">
+                    {correctItems.map((c, i) => (
+                      <span key={i} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">
+                        {c.expression}={c.answer}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== 공유 버튼 (VOCATEST 동일 스타일) ===== */}
           <button
-            onClick={handleRetry}
-            className="w-full py-4 rounded-2xl text-xl font-bold text-white shadow-md
-                       transition-all duration-150 active:scale-95 hover:shadow-lg"
-            style={{ backgroundColor: '#F5C542' }}
+            onClick={handleShare}
+            disabled={shareState === 'saving'}
+            className="w-full bg-white border-[1.5px] border-indigo-200 text-indigo-600 py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors mb-2 disabled:opacity-60"
+          >
+            {shareState === 'saving' && '⏳ 저장 중...'}
+            {shareState === 'copied' && '✅ 링크 복사됨!'}
+            {shareState === 'error' && '❌ 저장 실패. 다시 시도해주세요'}
+            {shareState === 'idle' && (shareUrl ? '🔗 링크 다시 복사' : '🔗 성적표 공유하기')}
+          </button>
+
+          {shareUrl && (
+            <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-3 mb-2 text-[11px] text-slate-400 break-all">
+              📋 <span className="flex-1">{shareUrl}</span>
+            </div>
+          )}
+
+          {/* 다시하기 */}
+          <button
+            onClick={() => { resetGame(); startGame(); }}
+            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(99,102,241,0.25)] mb-2"
           >
             🔄 다시하기
           </button>
+
+          {/* 홈으로 */}
           <button
-            onClick={handleHome}
-            className="w-full py-4 rounded-2xl text-xl font-bold shadow-md
-                       transition-all duration-150 active:scale-95 hover:shadow-lg"
-            style={{ backgroundColor: '#FFFFFF', color: '#5D4E37', border: '2px solid #E0D5C5' }}
+            onClick={() => { resetGame(); setScreen('start'); }}
+            className="w-full bg-white border border-slate-200 text-slate-600 py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 hover:bg-slate-50"
           >
-            🏠 홈으로
+            🏠 처음으로 돌아가기
           </button>
         </div>
+
+        <p className="text-center text-xs text-slate-400 mt-4">{createdAt}</p>
       </div>
     </div>
   );
 };
-
-// Helper component for stat items
-const StatItem: React.FC<{ label: string; value: number; color: string }> = ({
-  label,
-  value,
-  color,
-}) => (
-  <div className="flex flex-col items-center p-3 rounded-xl bg-gray-50">
-    <span className="text-sm text-gray-500 mb-1">{label}</span>
-    <span className="text-2xl font-bold" style={{ color }}>
-      {value}
-    </span>
-  </div>
-);
 
 export default ResultScreen;

@@ -1,22 +1,14 @@
 // 연산자 타입
-export type Operator = '+' | '-' | '×' | '÷';
+export type Operator = '+' | '-' | '×' | '÷' | 'mixed';
 
-// 문제 태그
-export type ProblemTag =
-  | 'addition'
-  | 'subtraction'
-  | 'multiplication'
-  | 'division'
-  | 'mixed'
-  | 'one_digit'
-  | 'two_digit'
-  | 'three_digit'
-  | 'carry'
-  | 'borrow'
-  | 'no_remainder'
-  | 'multiplication_table'
-  | 'large_number'
-  | 'order_of_operations';
+// 문제 태그 — v0.2: string으로 확장 (커리큘럼 태그 수용)
+export type ProblemTag = string;
+
+// 문제 종류 — v0.2
+export type ProblemKind = 'normal' | 'blank';
+
+// 학년 그룹 — v0.3
+export type GradeId = 'G1' | 'G2' | 'G3' | 'G4';
 
 // 문제 객체
 export interface Problem {
@@ -30,6 +22,12 @@ export interface Problem {
   tags: ProblemTag[];
   levelId: string;
   createdAt: number;
+
+  // v0.2 커리큘럼 필드
+  problemKind?: ProblemKind;
+  gradeId?: GradeId;
+  chapterId?: string;
+  unitId?: string;
 }
 
 // 게임 상태
@@ -69,16 +67,17 @@ export interface SoundSettings {
   volume: number;
 }
 
-// 화면 타입
+// 화면 타입 — v0.2: curriculumSelect 추가
 export type ScreenType =
   | 'start'
   | 'modeSelect'
   | 'levelSelect'
+  | 'curriculumSelect'
   | 'game'
   | 'result'
   | 'settings';
 
-// 모드 정의
+// 모드 정의 (v0.1 호환)
 export interface GameMode {
   id: string;
   name: string;
@@ -88,7 +87,7 @@ export interface GameMode {
   levelIds: string[];
 }
 
-// 레벨 정의
+// 레벨 정의 (v0.1 호환)
 export interface GameLevel {
   id: string;
   name: string;
@@ -109,9 +108,39 @@ export interface DifficultyConfig {
   lives: number;
 }
 
+// === v0.3 커리큘럼 타입 ===
+
+export type ProblemCategory = 'addition' | 'subtraction' | 'multiplication' | 'division' | 'mixed';
+
+export interface CurriculumUnit {
+  id: string;
+  gradeId: GradeId;
+  unitId: string;
+  title: string;
+  category: ProblemCategory;
+  order: number;
+  tags: string[];
+  examples: string[];
+  
+  fallSpeed: number;
+  spawnInterval: number;
+  maxActiveProblems: number;
+  generatorKey: string;
+}
+
+export interface CurriculumGrade {
+  id: GradeId;
+  title: string;
+  units: CurriculumUnit[];
+}
+
 // 점수 상수
 export const SCORE_PER_CORRECT = 10;
 export const COMBO_BONUS_INTERVAL = 5;
 export const COMBO_BONUS_SCORE = 20;
 export const DEFAULT_LIVES = 5;
 export const DEFAULT_INPUT_DIGIT_LIMIT = 5;
+
+// 타이머 상수 — 3분
+export const DEFAULT_GAME_DURATION_SECONDS = 180;
+

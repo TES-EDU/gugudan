@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { getLevelById } from '../data/levels';
+import { getUnitById } from '../data/curriculum';
 
 export function useGameLoop(): void {
   const status = useGameStore((s) => s.status);
@@ -15,8 +15,8 @@ export function useGameLoop(): void {
   useEffect(() => {
     if (status !== 'playing') return;
 
-    const level = getLevelById(levelId);
-    const spawnInterval = level ? level.spawnInterval / 1000 : 3.5; // seconds
+    const unit = getUnitById(levelId);
+    const spawnInterval = unit ? unit.spawnInterval / 1000 : 3.5; // seconds
 
     lastTimeRef.current = 0;
     spawnTimerRef.current = spawnInterval; // spawn immediately on first frame

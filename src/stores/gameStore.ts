@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { Problem, ProblemResult, ScreenType, GameStatus } from '../game/types';
-import { DEFAULT_LIVES } from '../game/types';
+import { DEFAULT_LIVES, DEFAULT_GAME_DURATION_SECONDS } from '../game/types';
 import { evaluateAnswer, createProblemResult } from '../game/scoring';
-import { generateProblem } from '../game/problemGenerator';
-import { getLevelById } from '../data/levels';
+import { generateCurriculumProblem } from '../game/curriculumProblemGenerator';
+import { getUnitById } from '../data/curriculum';
 import { setBestScore, setBestCombo } from '../utils/storage';
 
 interface GameStore {
@@ -81,7 +81,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lives: DEFAULT_LIVES,
   combo: 0,
   maxCombo: 0,
-  timeLeft: 300,
+  timeLeft: DEFAULT_GAME_DURATION_SECONDS,
   currentInput: '',
   activeProblems: [],
   correctCount: 0,
@@ -121,7 +121,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lives: DEFAULT_LIVES,
       combo: 0,
       maxCombo: 0,
-      timeLeft: 300,
+      timeLeft: DEFAULT_GAME_DURATION_SECONDS,
       currentInput: '',
       activeProblems: [],
       correctCount: 0,
@@ -211,26 +211,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     if (state.status !== 'playing') return;
 
-    const level = getLevelById(state.levelId);
-    if (!level) return;
-    if (state.activeProblems.length >= level.maxActiveProblems) return;
+    const unit = getUnitById(state.levelId);
+    if (!unit) return;
+    if (state.activeProblems.length >= unit.maxActiveProblems) return;
 
-    const { expression, answer, operator, tags } = generateProblem(state.levelId);
+    const generated = generateCurriculumProblem(state.levelId);
     const cardWidth = 160;
     const maxX = Math.max(state.gameAreaWidth - cardWidth - 10, 10);
     const x = Math.random() * maxX + 5;
 
     const problem: Problem = {
       id: `p_${++problemCounter}_${Date.now()}`,
-      expression,
-      answer,
-      operator,
+      expression: generated.expression,
+      answer: generated.answer,
+      operator: generated.operator,
       x,
       y: -60,
-      fallSpeed: level.fallSpeed,
-      tags,
+      fallSpeed: unit.fallSpeed,
+      tags: generated.tags,
       levelId: state.levelId,
       createdAt: Date.now(),
+      gradeId: generated.gradeId,
+      unitId: generated.unitId,
     };
 
     set({ activeProblems: [...state.activeProblems, problem] });

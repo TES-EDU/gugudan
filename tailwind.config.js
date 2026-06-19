@@ -19,6 +19,40 @@ export default {
         'border-brown': '#8B7355',
         'input-gold': '#E8A838',
         'heart-red': '#E74C3C',
+        sb: {
+          primary: '#F5C542',
+          'primary-dark': '#E8A838',
+          'primary-mid': '#F5C542',
+          'primary-light': '#FFD54F',
+          'primary-pale': '#FFF8E1',
+          'primary-paler': '#FFFDE7',
+
+          orange: '#FF7043',
+          'orange-dark': '#F4511E',
+          'orange-pale': '#FBE9E7',
+          yellow: '#FFCA28',
+
+          correct: '#43A047',
+          'correct-dark': '#2E7D32',
+          'correct-pale': '#E8F5E9',
+
+          wrong: '#E53935',
+          'wrong-dark': '#C62828',
+          'wrong-pale': '#FFEBEE',
+          'wrong-light': '#EF9A9A',
+
+          bg: '#FFF8F0',
+          surface: '#FFFFFF',
+          'surface-alt': '#FDF9F3',
+
+          ink: '#5D4E37',
+          'ink-mid': '#776757',
+          muted: '#A1887F',
+          'muted-soft': '#BCAAA4',
+          'muted-softer': '#D7CCC8',
+          line: '#EFEBE9',
+          'line-soft': '#F5F5F5',
+        }
       },
       animation: {
         'pop-in': 'popIn 0.2s ease-out',
