@@ -70,7 +70,6 @@ const CurriculumSelectScreen: React.FC = () => {
 
   const [selectedGradeId, setSelectedGradeId] = useState<GradeId>('G1');
   const [openGroupKeys, setOpenGroupKeys] = useState<Set<string>>(new Set());
-  const [initialized, setInitialized] = useState(false);
 
   const currentGrade = CURRICULUM.find((g) => g.id === selectedGradeId);
   const units = currentGrade?.units ?? [];
@@ -85,7 +84,6 @@ const CurriculumSelectScreen: React.FC = () => {
     if (groupKeys.length > 0) {
       setOpenGroupKeys(new Set([groupKeys[0]]));
     }
-    setInitialized(true);
   }, [selectedGradeId]);
 
   const handleGradeChange = (gradeId: GradeId) => {
