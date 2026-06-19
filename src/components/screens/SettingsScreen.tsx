@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { clearAllData } from '../../utils/storage';
 
@@ -14,6 +14,23 @@ const SettingsScreen: React.FC = () => {
   const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (_) { /* ignore */ }
+  }, []);
 
   const handleClearData = () => {
     clearAllData();
@@ -101,9 +118,10 @@ const SettingsScreen: React.FC = () => {
           </div>
           <div className="flex gap-2">
             {[
-              { label: '느리게', value: 0.7 },
-              { label: '보통', value: 1.0 },
-              { label: '빠르게', value: 1.5 },
+              { label: '느리게', value: 0.7, icon: '🐢' },
+              { label: '보통', value: 1.0, icon: '🚶' },
+              { label: '빠르게', value: 1.5, icon: '🏃' },
+              { label: '매우 빠르게', value: 2.0, icon: '⚡' },
             ].map((speed) => (
               <button
                 key={speed.label}
@@ -120,6 +138,31 @@ const SettingsScreen: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-6" />
+
+        {/* Fullscreen toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-xl font-bold" style={{ color: '#5D4E37' }}>
+            📱 전체화면
+          </span>
+          <button
+            onClick={toggleFullscreen}
+            className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
+              isFullscreen ? 'bg-green-400' : 'bg-gray-300'
+            }`}
+          >
+            <div
+              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                isFullscreen ? 'translate-x-7' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-xs mb-6" style={{ color: '#9E9E9E' }}>
+          태블릿에서 크롬 탭을 숨기고 전체 화면으로 플레이합니다.
+        </p>
 
         {/* Divider */}
         <div className="border-t border-gray-200 my-6" />

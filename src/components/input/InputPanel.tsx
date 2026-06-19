@@ -58,6 +58,15 @@ const InputPanel: React.FC = () => {
           {bgmEnabled ? '🎵' : '🔇'}
         </button>
         <button
+          onClick={() => {
+            if (document.fullscreenElement) document.exitFullscreen();
+            else document.documentElement.requestFullscreen().catch(() => {});
+          }}
+          className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
+        >
+          {document.fullscreenElement ? '⬜' : '⛶'}
+        </button>
+        <button
           onClick={handlePause}
           className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
           style={{ color: '#5D4E37' }}

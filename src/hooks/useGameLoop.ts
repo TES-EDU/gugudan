@@ -52,10 +52,12 @@ export function useGameLoop(): void {
       // Update falling problems
       updateProblems(clampedDelta);
 
-      // Track spawn interval
+      // Track spawn interval (adjusted by speed multiplier)
+      const currentMultiplier = state.speedMultiplier;
+      const adjustedSpawnInterval = spawnInterval / currentMultiplier;
       spawnTimerRef.current += clampedDelta;
-      if (spawnTimerRef.current >= spawnInterval) {
-        spawnTimerRef.current -= spawnInterval;
+      if (spawnTimerRef.current >= adjustedSpawnInterval) {
+        spawnTimerRef.current -= adjustedSpawnInterval;
         spawnProblem();
       }
 
