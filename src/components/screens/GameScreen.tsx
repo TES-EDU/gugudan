@@ -11,6 +11,8 @@ const GameScreen: React.FC = () => {
   const status = useGameStore((s) => s.status);
   const resumeGame = useGameStore((s) => s.resumeGame);
   const goToResult = useGameStore((s) => s.goToResult);
+  const speedMultiplier = useGameStore((s) => s.speedMultiplier);
+  const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
   const { playPause, playGameOver } = useSound();
 
   const [showGameOver, setShowGameOver] = useState(false);
@@ -56,6 +58,33 @@ const GameScreen: React.FC = () => {
             <h2 className="text-3xl font-bold" style={{ color: '#5D4E37' }}>
               일시정지
             </h2>
+            
+            {/* Speed Control in Pause */}
+            <div className="w-full bg-gray-50 rounded-2xl p-4 my-2">
+              <div className="text-sm font-bold text-gray-500 mb-3 text-center">게임 속도 변경</div>
+              <div className="flex gap-2">
+                {[
+                  { label: '느리게', value: 0.7, icon: '🐢' },
+                  { label: '보통', value: 1.0, icon: '🚶' },
+                  { label: '빠르게', value: 1.5, icon: '🏃' },
+                  { label: '매우 빠름', value: 2.0, icon: '⚡' },
+                ].map((speed) => (
+                  <button
+                    key={speed.label}
+                    onClick={() => setSpeedMultiplier(speed.value)}
+                    className="flex-1 flex flex-col items-center justify-center py-2 rounded-xl transition-all duration-150 shadow-sm active:scale-95"
+                    style={{
+                      backgroundColor: speedMultiplier === speed.value ? '#F5C542' : '#FFFFFF',
+                      color: speedMultiplier === speed.value ? '#FFFFFF' : '#5D4E37',
+                      border: speedMultiplier === speed.value ? '2px solid #F5C542' : '1px solid #E0E0E0',
+                    }}
+                  >
+                    <span className="text-xl mb-1">{speed.icon}</span>
+                    <span className="text-xs font-bold whitespace-nowrap">{speed.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-col gap-4 w-full">
               <button
                 onClick={handleResume}
