@@ -111,31 +111,57 @@ const SettingsScreen: React.FC = () => {
 
         {/* Speed Control */}
         <div className="mb-6 mt-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <span className="text-xl font-bold" style={{ color: '#5D4E37' }}>
               속도 조절
             </span>
           </div>
-          <div className="flex gap-2">
-            {[
-              { label: '느리게', value: 0.7, icon: '🐢' },
-              { label: '보통', value: 1.0, icon: '🚶' },
-              { label: '빠르게', value: 1.5, icon: '🏃' },
-              { label: '매우 빠르게', value: 2.0, icon: '⚡' },
-            ].map((speed) => (
-              <button
-                key={speed.label}
-                onClick={() => setSpeedMultiplier(speed.value)}
-                className="flex-1 py-2 rounded-xl text-lg font-bold transition-all duration-150 shadow-sm hover:shadow-md"
-                style={{
-                  backgroundColor: speedMultiplier === speed.value ? '#F5C542' : '#F5F5F5',
-                  color: speedMultiplier === speed.value ? '#FFFFFF' : '#5D4E37',
-                  border: speedMultiplier === speed.value ? '2px solid #F5C542' : '2px solid transparent',
-                }}
-              >
-                {speed.label}
-              </button>
-            ))}
+          <div className="w-full bg-white rounded-2xl px-5 py-6 my-2 shadow-inner">
+            <div className="relative mb-6">
+              {/* Custom Track Container */}
+              <div className="absolute top-3 left-2 right-2 h-2.5 bg-gray-200 rounded-full" />
+              <div 
+                className="absolute top-3 left-2 h-2.5 bg-[#F5C542] rounded-full transition-all duration-300" 
+                style={{ width: `calc(${([0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) / 3) * 100}% - 4px)` }} 
+              />
+
+              <input 
+                type="range" 
+                min="0" max="3" step="1" 
+                value={[0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier)}
+                onChange={(e) => setSpeedMultiplier([0.7, 1.0, 1.5, 2.0][parseInt(e.target.value)])}
+                className="relative w-full h-8 opacity-0 cursor-pointer z-20"
+              />
+              
+              {/* Dots */}
+              <div className="absolute top-4 left-2 right-2 flex justify-between pointer-events-none z-10 -translate-y-1/2">
+                {[0, 1, 2, 3].map(idx => {
+                  const isActive = [0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) === idx;
+                  const isPassed = [0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) >= idx;
+                  return (
+                    <div key={idx} className="relative w-0 h-0 flex items-center justify-center">
+                      <div className={`absolute rounded-full transition-all duration-300
+                                      ${isActive ? 'w-7 h-7 bg-white border-[6px] border-[#F5C542] shadow-md' : 
+                                        isPassed ? 'w-3.5 h-3.5 bg-[#F5C542]' : 'w-3.5 h-3.5 bg-gray-300'}`} />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Labels */}
+              <div className="flex justify-between mt-4 px-2">
+                {['느리게', '보통', '빠르게', '매우 빠름'].map((label, idx) => {
+                  const isActive = [0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) === idx;
+                  return (
+                    <div key={label} className="relative w-0 flex justify-center">
+                      <span className={`absolute top-0 whitespace-nowrap font-bold transition-all duration-300 ${isActive ? 'text-[#F5C542] text-[13px] scale-110' : 'text-gray-400 text-xs'}`}>
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
