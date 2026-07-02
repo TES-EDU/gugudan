@@ -11,6 +11,7 @@ const StartScreen: React.FC = () => {
   const setSoundEnabled = useGameStore((s) => s.setSoundEnabled);
   const bestScore = getBestScore();
   const [name, setName] = useState('');
+  const [testCode, setTestCode] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
   useEffect(() => {
@@ -33,6 +34,14 @@ const StartScreen: React.FC = () => {
   }, []);
 
   const handleStart = () => {
+    if (!name.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+    if (testCode.trim().toUpperCase() !== 'LQ4QEG') {
+      alert('응시코드가 올바르지 않습니다.');
+      return;
+    }
     saveStudentName(name);
     setScreen('curriculumSelect');
   };
@@ -76,14 +85,22 @@ const StartScreen: React.FC = () => {
         🌧️ 산성비 연산 게임
       </h1>
 
-      {/* Name Input */}
-      <div className="mb-6 w-72">
+      {/* Name and Code Inputs */}
+      <div className="mb-6 w-72 flex flex-col gap-3">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="학생 이름을 입력하세요"
-          className="w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90"
+          className="w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors"
+          style={{ color: '#5D4E37' }}
+        />
+        <input
+          type="text"
+          value={testCode}
+          onChange={(e) => setTestCode(e.target.value)}
+          placeholder="응시코드 (LQ4QEG)"
+          className="w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors uppercase placeholder:normal-case"
           style={{ color: '#5D4E37' }}
         />
       </div>
@@ -100,15 +117,7 @@ const StartScreen: React.FC = () => {
           🎮 게임 시작
         </button>
 
-        {/* 성적표 (disabled) */}
-        <button
-          disabled
-          className="py-4 px-8 rounded-2xl text-2xl font-bold shadow-md
-                     opacity-50 cursor-not-allowed"
-          style={{ backgroundColor: '#E0E0E0', color: '#9E9E9E' }}
-        >
-          📊 성적표
-        </button>
+
       </div>
 
       {/* Teacher page shortcut */}
