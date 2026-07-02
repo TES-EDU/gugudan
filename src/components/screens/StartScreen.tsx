@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '../../stores/gameStore';
 import { getBestScore, getStudentName, setStudentName as saveStudentName } from '../../utils/storage';
 
@@ -6,11 +7,29 @@ const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
 const StartScreen: React.FC = () => {
   const setScreen = useGameStore((s) => s.setScreen);
+  const soundEnabled = useGameStore((s) => s.soundEnabled);
+  const setSoundEnabled = useGameStore((s) => s.setSoundEnabled);
   const bestScore = getBestScore();
   const [name, setName] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
   useEffect(() => {
     setName(getStudentName());
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const handleStart = () => {
@@ -26,6 +45,22 @@ const StartScreen: React.FC = () => {
         background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 30%, #FFCC80 60%, #FFB74D 100%)',
       }}
     >
+      {/* Top Right Actions */}
+      <div className="absolute top-6 right-6 flex items-center gap-3">
+        <button
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors"
+        >
+          {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg hover:bg-orange-600 transition-colors"
+        >
+          {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+        </button>
+      </div>
+
       {/* Title */}
       <h1
         className="text-6xl md:text-7xl font-bold mb-12 text-center"
@@ -59,16 +94,6 @@ const StartScreen: React.FC = () => {
           style={{ backgroundColor: '#F5C542' }}
         >
           🎮 게임 시작
-        </button>
-
-        {/* 설정 */}
-        <button
-          onClick={() => setScreen('settings')}
-          className="py-4 px-8 rounded-2xl text-2xl font-bold shadow-md
-                     transition-all duration-150 active:scale-95 hover:shadow-lg"
-          style={{ backgroundColor: '#FFFFFF', color: '#5D4E37' }}
-        >
-          ⚙️ 설정
         </button>
 
         {/* 성적표 (disabled) */}
