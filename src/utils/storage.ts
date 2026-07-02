@@ -7,7 +7,16 @@ const STORAGE_KEYS = {
   SOUND_SETTINGS: 'mathrain_soundSettings',
   SELECTED_MODE: 'mathrain_selectedMode',
   SELECTED_LEVEL: 'mathrain_selectedLevel',
+  STUDENT_NAME: 'mathrain_studentName',
 } as const;
+
+export function getStudentName(): string {
+  return localStorage.getItem(STORAGE_KEYS.STUDENT_NAME) || '';
+}
+
+export function setStudentName(name: string): void {
+  localStorage.setItem(STORAGE_KEYS.STUDENT_NAME, name.trim());
+}
 
 export function getBestScore(): number {
   return parseInt(localStorage.getItem(STORAGE_KEYS.BEST_SCORE) || '0', 10);

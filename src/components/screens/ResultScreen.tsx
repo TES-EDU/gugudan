@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { analyzeWeakTags } from '../../game/scoring';
-import { getUnitById } from '../../data/curriculum';
+import { getUnitById, CURRICULUM } from '../../data/curriculum';
+import { getStudentName } from '../../utils/storage';
 import { saveMathResult } from '../../lib/supabase';
 import type { MathCorrectAnswer, MathIncorrectAnswer } from '../../lib/supabase';
 import type { GradeId } from '../../game/types';
@@ -70,8 +71,9 @@ const ResultScreen: React.FC = () => {
         .map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, result: 'wrong' as const, unitId: levelId })),
       ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, result: 'missed' as const, unitId: levelId })),
     ];
+    const studentName = getStudentName() || '학생';
     saveMathResult({
-      user_name: '학생', book_title: '산성비 연산 게임', unit_title: levelId,
+      user_name: studentName, book_title: '산성비 연산 게임', unit_title: levelId,
       unit_display_name: `${chapterTitle} — ${unitDisplayName}`, grade_id: gradeId,
       total_questions: totalAll, correct_count: correctCount, wrong_count: wrongCount,
       missed_count: missedCount, score, accuracy, max_combo: maxCombo, time_seconds: 180,

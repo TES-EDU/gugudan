@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
-import { getBestScore } from '../../utils/storage';
+import { getBestScore, getStudentName, setStudentName as saveStudentName } from '../../utils/storage';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
 const StartScreen: React.FC = () => {
   const setScreen = useGameStore((s) => s.setScreen);
   const bestScore = getBestScore();
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    setName(getStudentName());
+  }, []);
+
+  const handleStart = () => {
+    saveStudentName(name);
+    setScreen('curriculumSelect');
+  };
 
   return (
     <div
@@ -27,11 +37,23 @@ const StartScreen: React.FC = () => {
         🌧️ 산성비 연산 게임
       </h1>
 
+      {/* Name Input */}
+      <div className="mb-6 w-72">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="학생 이름을 입력하세요"
+          className="w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90"
+          style={{ color: '#5D4E37' }}
+        />
+      </div>
+
       {/* Button grid */}
       <div className="grid grid-cols-1 gap-4 w-72">
         {/* 게임 시작 */}
         <button
-          onClick={() => setScreen('curriculumSelect')}
+          onClick={handleStart}
           className="py-4 px-8 rounded-2xl text-2xl font-bold text-white shadow-lg
                      transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110"
           style={{ backgroundColor: '#F5C542' }}
@@ -49,16 +71,27 @@ const StartScreen: React.FC = () => {
           ⚙️ 설정
         </button>
 
-        {/* 선생님 페이지 */}
+        {/* 성적표 (disabled) */}
+        <button
+          disabled
+          className="py-4 px-8 rounded-2xl text-2xl font-bold shadow-md
+                     opacity-50 cursor-not-allowed"
+          style={{ backgroundColor: '#E0E0E0', color: '#9E9E9E' }}
+        >
+          📊 성적표
+        </button>
+      </div>
+
+      {/* Teacher page shortcut */}
+      <div className="mt-4">
         <button
           onClick={() => {
-            window.location.search = '?admin=true';
+            window.location.href = '?admin=true';
           }}
-          className="py-4 px-8 rounded-2xl text-2xl font-bold shadow-md
-                     transition-all duration-150 active:scale-95 hover:shadow-lg"
-          style={{ backgroundColor: '#E3F2FD', color: '#0D47A1' }}
+          className="text-sm font-medium transition-colors hover:text-amber-700"
+          style={{ color: '#8D7B68', textDecoration: 'underline' }}
         >
-          👨‍🏫 선생님 페이지
+          선생님 페이지 가기
         </button>
       </div>
 
