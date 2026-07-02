@@ -52,8 +52,8 @@ const GameScreen: React.FC = () => {
 
       {/* Pause Overlay */}
       {status === 'paused' && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl px-12 py-8 shadow-2xl flex flex-col items-center gap-6">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-3xl w-full max-w-[500px] px-10 py-10 shadow-2xl flex flex-col items-center gap-6">
             <span className="text-5xl">⏸️</span>
             <h2 className="text-3xl font-bold" style={{ color: '#5D4E37' }}>
               일시정지
@@ -109,22 +109,22 @@ const GameScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-4 w-full">
+            <div className="flex flex-row gap-4 w-full mt-4">
+              <button
+                onClick={() => goToResult()}
+                className="flex-1 px-4 py-4 rounded-2xl text-xl font-bold shadow-md
+                           transition-all duration-150 active:scale-95 hover:shadow-lg"
+                style={{ backgroundColor: '#FFFFFF', color: '#5D4E37', border: '2px solid #5D4E37' }}
+              >
+                🛑 끝내기
+              </button>
               <button
                 onClick={handleResume}
-                className="w-full px-10 py-4 rounded-2xl text-2xl font-bold text-white shadow-lg
+                className="flex-[2] px-4 py-4 rounded-2xl text-xl font-bold text-white shadow-lg
                            transition-all duration-150 active:scale-95 hover:shadow-xl"
                 style={{ backgroundColor: '#F5C542' }}
               >
                 ▶️ 계속하기
-              </button>
-              <button
-                onClick={() => goToResult()}
-                className="w-full px-10 py-4 rounded-2xl text-2xl font-bold shadow-lg
-                           transition-all duration-150 active:scale-95 hover:shadow-xl"
-                style={{ backgroundColor: '#FFFFFF', color: '#5D4E37', border: '2px solid #5D4E37' }}
-              >
-                🛑 끝내기
               </button>
             </div>
           </div>
