@@ -7,9 +7,7 @@ import MathTeacherLogin from './MathTeacherLogin';
 interface Props { onStudentClick: (studentName: string) => void; }
 
 type Tab = 'students' | 'classes' | 'history';
-type LevelFilter = 'all' | 'G1' | 'G2' | 'G3';
-
-const FILTER_LABELS: Record<string, string> = { all: '전체', 'G1': 'G1', 'G2': 'G2', 'G3': 'G3' };
+type DateFilter = 'all' | 'today' | 'yesterday' | '2daysAgo' | 'custom';
 
 function fmtDateTime(dateStr: string | undefined): string {
   if (!dateStr) return '-';
@@ -27,7 +25,8 @@ export default function AdminPage({ onStudentClick }: Props) {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>('students');
-  const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [customDate, setCustomDate] = useState<string>(''); // YYYY-MM-DD
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [mobileStudentFilter, setMobileStudentFilter] = useState<'all' | 'tested' | 'untested' | 'attention'>('all');
@@ -89,10 +88,37 @@ export default function AdminPage({ onStudentClick }: Props) {
 
   // Filtered results
   const filtered = useMemo(() => {
-    let data = levelFilter === 'all' ? results : results.filter(r => r.grade_id === levelFilter);
+    let data = results;
+    
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      let targetDateStr = '';
+      
+      // en-CA format gives YYYY-MM-DD
+      if (dateFilter === 'today') {
+        targetDateStr = today.toLocaleDateString('en-CA');
+      } else if (dateFilter === 'yesterday') {
+        const y = new Date(today); y.setDate(y.getDate() - 1);
+        targetDateStr = y.toLocaleDateString('en-CA');
+      } else if (dateFilter === '2daysAgo') {
+        const d = new Date(today); d.setDate(d.getDate() - 2);
+        targetDateStr = d.toLocaleDateString('en-CA');
+      } else if (dateFilter === 'custom' && customDate) {
+        targetDateStr = customDate;
+      }
+
+      if (targetDateStr) {
+        data = data.filter(r => {
+          if (!r.created_at) return false;
+          const localDate = new Date(r.created_at).toLocaleDateString('en-CA');
+          return localDate === targetDateStr;
+        });
+      }
+    }
+
     if (query.trim()) data = data.filter(r => r.user_name.includes(query.trim()));
     return data;
-  }, [results, levelFilter, query]);
+  }, [results, dateFilter, customDate, query]);
 
 
   // Ghost students (in results but not in students table)
@@ -533,13 +559,37 @@ export default function AdminPage({ onStudentClick }: Props) {
       <h1 className="text-2xl font-extrabold text-sb-ink mb-4">시험 이력</h1>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(['all', 'G1', 'G2', 'G3'] as const).map(f => (
-          <button key={f} onClick={() => setLevelFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-              levelFilter === f ? 'bg-sb-primary-dark text-white' : 'bg-sb-surface text-sb-muted border border-sb-line'
-            }`}>{FILTER_LABELS[f]}</button>
-        ))}
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
+        {(['all', 'today', 'yesterday', '2daysAgo'] as const).map(f => {
+          const label = f === 'all' ? '전체' : f === 'today' ? '오늘' : f === 'yesterday' ? '어제' : '그제';
+          return (
+            <button key={f} onClick={() => { setDateFilter(f); setCustomDate(''); }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                dateFilter === f ? 'bg-sb-primary-dark text-white' : 'bg-sb-surface text-sb-muted border border-sb-line hover:border-sb-primary-light'
+              }`}>{label}</button>
+          );
+        })}
+        
+        {/* Custom Date Picker */}
+        <div className="relative flex items-center">
+          <input 
+            type="date"
+            value={customDate}
+            onChange={(e) => {
+              if (e.target.value) {
+                setCustomDate(e.target.value);
+                setDateFilter('custom');
+              } else {
+                setCustomDate('');
+                setDateFilter('all');
+              }
+            }}
+            className={`h-9 px-3 rounded-lg border text-sm font-semibold transition-colors outline-none cursor-pointer ${
+              dateFilter === 'custom' ? 'bg-sb-primary-dark text-white border-sb-primary-dark' : 'bg-sb-surface text-sb-muted border-sb-line hover:border-sb-primary-light'
+            }`}
+          />
+        </div>
+
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-sb-muted-soft" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="학생 이름 검색…"
