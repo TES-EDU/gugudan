@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal, CheckCircle2, Circle } from 'lucide-react';
+import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal, CheckCircle2, Circle, Home } from 'lucide-react';
 import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
 
 import MathTeacherLogin from './MathTeacherLogin';
@@ -256,6 +256,9 @@ export default function AdminPage({ onStudentClick }: Props) {
         <span className="text-xs text-sb-muted font-medium hidden md:inline">· {academy?.name || '관리'}</span>
       </div>
       <div className="flex items-center gap-1 md:gap-3 shrink-0">
+        <button onClick={() => window.location.href = window.location.pathname} className="p-2 md:p-0 flex items-center gap-1.5 text-sm text-sb-muted hover:text-sb-primary-dark transition-colors mr-1 md:mr-2">
+          <Home size={16} /><span className="hidden md:inline">메인으로</span>
+        </button>
         <button onClick={loadAll} className="p-2 md:p-0 flex items-center gap-1.5 text-sm text-sb-muted hover:text-sb-primary-dark transition-colors">
           <RefreshCw size={16} /><span className="hidden md:inline">새로고침</span>
         </button>
