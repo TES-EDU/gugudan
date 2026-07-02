@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal } from 'lucide-react';
-import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
+import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
 
 import MathTeacherLogin from './MathTeacherLogin';
 
@@ -33,6 +33,7 @@ export default function AdminPage({ onStudentClick }: Props) {
   const [mobileStudentFilter, setMobileStudentFilter] = useState<'all' | 'tested' | 'untested' | 'attention'>('all');
   const [studentSearch, setStudentSearch] = useState('');
   const [academy, setAcademy] = useState<AcademyRow | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
   // Class management
   const [newClassName, setNewClassName] = useState('');
@@ -94,10 +95,18 @@ export default function AdminPage({ onStudentClick }: Props) {
   }, [results, levelFilter, query]);
 
 
+  // Ghost students (in results but not in students table)
+  const allStudents = useMemo(() => {
+    const existingNames = new Set(students.map(s => s.name));
+    const ghosts = Array.from(new Set(results.map(r => r.user_name))).filter(name => !existingNames.has(name));
+    const ghostRows: StudentRow[] = ghosts.map(name => ({ id: `ghost_${name}`, name, grade: null, academy_id: academy?.id ?? null }));
+    return [...students, ...ghostRows];
+  }, [students, results, academy]);
+
   // Per-student stats for mobile rich cards
   const studentStats = useMemo(() => {
     const today = new Date().toDateString();
-    return students.map(s => {
+    return allStudents.map(s => {
       const sr = results.filter(r => r.user_name === s.name);
       const cls = classes.find(c => (c.student_ids || []).includes(s.id));
       const scores = sr.map(r => r.accuracy);
@@ -110,7 +119,7 @@ export default function AdminPage({ onStudentClick }: Props) {
       const needsAttention = (avg !== null && avg < 50) || (wrongRate !== null && wrongRate > 30);
       return { ...s, cls, latest: sr[0], avg, wrongRate, testedToday, trend, needsAttention, testCount: sr.length };
     });
-  }, [students, results, classes]);
+  }, [allStudents, results, classes]);
 
   const todayTestedCount = useMemo(() => studentStats.filter(s => s.testedToday).length, [studentStats]);
   const untestedCount = useMemo(() => studentStats.filter(s => !s.testedToday && s.testCount > 0).length, [studentStats]);
@@ -144,6 +153,60 @@ export default function AdminPage({ onStudentClick }: Props) {
     const newIds = ids.includes(studentId) ? ids.filter(id => id !== studentId) : [...ids, studentId];
     await updateClassStudents(cls.id, newIds);
     loadAll();
+  };
+
+  const toggleStudentSelection = (name: string) => {
+    const next = new Set(selectedStudents);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setSelectedStudents(next);
+  };
+
+  const handleActionRename = async () => {
+    const oldName = Array.from(selectedStudents)[0];
+    const newName = prompt(`'${oldName}' 학생의 새 이름을 입력하세요:`);
+    if (!newName || newName.trim() === '' || newName === oldName) return;
+    setLoading(true);
+    const success = await renameStudentAdmin(oldName, newName.trim(), academy?.id);
+    if (success) {
+      setSelectedStudents(new Set());
+      await loadAll();
+    } else {
+      alert('이름 변경에 실패했습니다. (이미 존재하는 이름일 수 있습니다.)');
+      setLoading(false);
+    }
+  };
+
+  const handleActionDelete = async () => {
+    const names = Array.from(selectedStudents);
+    if (!confirm(`정말 선택한 ${names.length}명의 학생과 시험 기록을 삭제하시겠습니까?`)) return;
+    setLoading(true);
+    const success = await deleteStudentsAdmin(names, academy?.id);
+    if (success) {
+      setSelectedStudents(new Set());
+      await loadAll();
+    } else {
+      alert('삭제에 실패했습니다.');
+      setLoading(false);
+    }
+  };
+
+  const handleActionMerge = async () => {
+    const names = Array.from(selectedStudents);
+    const target = prompt(`선택한 ${names.length}명의 학생을 합칠 '진짜 이름'을 정확히 입력하세요:\n\n선택된 이름들: ${names.join(', ')}`);
+    if (!target || target.trim() === '') return;
+    if (!names.includes(target.trim())) {
+      if (!confirm(`입력하신 이름 '${target}'이 선택된 목록에 없습니다. 그래도 계속 진행할까요?`)) return;
+    }
+    setLoading(true);
+    const success = await mergeStudentsAdmin(names, target.trim(), academy?.id);
+    if (success) {
+      setSelectedStudents(new Set());
+      await loadAll();
+    } else {
+      alert('병합에 실패했습니다.');
+      setLoading(false);
+    }
   };
 
   if (authChecking) return <div className="min-h-screen bg-sb-bg flex items-center justify-center"><Loader2 size={32} className="animate-spin text-sb-primary" /></div>;
@@ -249,6 +312,12 @@ export default function AdminPage({ onStudentClick }: Props) {
               <div key={s.id} className="bg-sb-surface border border-sb-line rounded-2xl p-4">
                 {/* Name row */}
                 <div className="flex items-center gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedStudents.has(s.name)}
+                    onChange={() => toggleStudentSelection(s.name)}
+                    className="w-5 h-5 rounded border-sb-line text-sb-primary focus:ring-sb-primary"
+                  />
                   <div className="w-11 h-11 rounded-full bg-sb-primary text-white text-base font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -310,23 +379,49 @@ export default function AdminPage({ onStudentClick }: Props) {
               const lastResult = studentResults[0];
               const cls = classes.find(c => (c.student_ids || []).includes(s.id));
               return (
-                <button key={s.id} onClick={() => onStudentClick(s.name)}
-                  className="w-full bg-sb-surface border border-sb-line rounded-xl px-4 py-3 flex items-center gap-3 hover:border-sb-primary-light hover:bg-sb-primary-paler transition-all text-left cursor-pointer">
-                  <div className="w-9 h-9 rounded-full bg-sb-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
+                <div key={s.id} className="w-full bg-sb-surface border border-sb-line rounded-xl px-4 py-3 flex items-center gap-3 hover:border-sb-primary-light hover:bg-sb-primary-paler transition-all">
+                  <input
+                    type="checkbox"
+                    checked={selectedStudents.has(s.name)}
+                    onChange={() => toggleStudentSelection(s.name)}
+                    className="w-5 h-5 rounded border-sb-line text-sb-primary focus:ring-sb-primary"
+                  />
+                  <button onClick={() => onStudentClick(s.name)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
+                    <div className="w-9 h-9 rounded-full bg-sb-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sb-ink">{s.name}</span>
                       {cls && <span className="text-[10px] px-1.5 py-0.5 bg-sb-correct-pale text-sb-correct-dark rounded font-semibold">{cls.name}</span>}
                     </div>
                     <div className="text-xs text-sb-muted">{studentResults.length > 0 ? `시험 ${studentResults.length}회 · 최근 ${lastResult?.score}%` : '시험 기록 없음'}</div>
-                  </div>
-                  <ChevronRight size={16} className="text-sb-muted-soft shrink-0" />
-                </button>
+                  </button>
+                  <ChevronRight size={16} className="text-sb-muted-soft shrink-0 pointer-events-none" />
+                </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Floating Action Bar for Selected Students */}
+      {selectedStudents.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-sb-ink text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 z-50 animate-fade-in whitespace-nowrap">
+          <span className="font-bold">{selectedStudents.size}명 선택됨</span>
+          <div className="w-px h-5 bg-white/20" />
+          
+          {selectedStudents.size === 1 ? (
+            <button onClick={handleActionRename} className="text-sm font-semibold hover:text-sb-primary-light transition-colors">이름 변경</button>
+          ) : (
+            <button onClick={handleActionMerge} className="text-sm font-semibold hover:text-sb-primary-light transition-colors">선택 병합</button>
+          )}
+          
+          <button onClick={handleActionDelete} className="text-sm font-semibold text-sb-wrong hover:text-sb-wrong-light transition-colors ml-2">삭제</button>
+          
+          <button onClick={() => setSelectedStudents(new Set())} className="ml-2 p-1 text-white/50 hover:text-white transition-colors">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 

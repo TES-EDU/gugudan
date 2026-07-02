@@ -366,3 +366,53 @@ export async function getStudents(academyId?: string | null): Promise<StudentRow
   if (error) { console.error('Failed to get students:', error); return []; }
   return data ?? [];
 }
+
+export async function deleteStudentsAdmin(names: string[], academyId?: string | null): Promise<boolean> {
+  if (!names.length) return false;
+  
+  // Delete from math_results
+  const { error: err1 } = await supabase.from('math_results').delete().in('user_name', names);
+  if (err1) { console.error('Failed to delete from math_results:', err1); return false; }
+
+  // Delete from students
+  let query = supabase.from('students').delete().in('name', names);
+  if (academyId) query = query.eq('academy_id', academyId);
+  const { error: err2 } = await query;
+  if (err2) { console.error('Failed to delete from students:', err2); return false; }
+
+  return true;
+}
+
+export async function renameStudentAdmin(oldName: string, newName: string, academyId?: string | null): Promise<boolean> {
+  if (!oldName || !newName || oldName === newName) return false;
+
+  // Update math_results
+  const { error: err1 } = await supabase.from('math_results').update({ user_name: newName }).eq('user_name', oldName);
+  if (err1) { console.error('Failed to update math_results name:', err1); return false; }
+
+  // Update students table
+  let query = supabase.from('students').update({ name: newName }).eq('name', oldName);
+  if (academyId) query = query.eq('academy_id', academyId);
+  const { error: err2 } = await query;
+  if (err2) { console.error('Failed to rename in students:', err2); return false; }
+
+  return true;
+}
+
+export async function mergeStudentsAdmin(sourceNames: string[], targetName: string, academyId?: string | null): Promise<boolean> {
+  if (!sourceNames.length || !targetName) return false;
+  const toMerge = sourceNames.filter(n => n !== targetName);
+  if (!toMerge.length) return false;
+
+  // 1. Update math_results for source names to target name
+  const { error: err1 } = await supabase.from('math_results').update({ user_name: targetName }).in('user_name', toMerge);
+  if (err1) { console.error('Failed to merge math_results:', err1); return false; }
+
+  // 2. Delete source names from students table (since they are merged into target)
+  let delQuery = supabase.from('students').delete().in('name', toMerge);
+  if (academyId) delQuery = delQuery.eq('academy_id', academyId);
+  const { error: err2 } = await delQuery;
+  if (err2) { console.error('Failed to delete merged students:', err2); return false; }
+
+  return true;
+}
