@@ -99,7 +99,7 @@ const StartScreen: React.FC = () => {
           type="text"
           value={testCode}
           onChange={(e) => setTestCode(e.target.value)}
-          placeholder="응시코드 (LQ4QEG)"
+          placeholder="응시코드"
           className="w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors uppercase placeholder:normal-case"
           style={{ color: '#5D4E37' }}
         />
