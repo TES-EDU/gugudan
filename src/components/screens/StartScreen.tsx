@@ -124,14 +124,7 @@ const StartScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* Best score */}
-      {bestScore > 0 && (
-        <div className="mt-10 px-6 py-3 rounded-full bg-white/70 backdrop-blur-sm shadow-sm">
-          <span className="text-lg" style={{ color: '#5D4E37' }}>
-            🏆 최고 점수: <span className="font-bold text-xl" style={{ color: '#E8A838' }}>{bestScore} 점</span>
-          </span>
-        </div>
-      )}
+
     </div>
   );
 };
