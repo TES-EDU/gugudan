@@ -14,6 +14,13 @@ function fmtDateTime(dateStr: string | undefined): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function getClassBadgeColor(name: string) {
+  if (name.includes('하계')) return 'bg-emerald-100 text-emerald-700';
+  if (name.includes('중계')) return 'bg-amber-100 text-amber-700';
+  if (name.includes('창동')) return 'bg-indigo-100 text-indigo-700';
+  return 'bg-sb-correct-pale text-sb-correct-dark';
+}
+
 
 
 export default function AdminPage({ onStudentClick }: Props) {
@@ -352,7 +359,7 @@ export default function AdminPage({ onStudentClick }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sb-ink">{s.name}</span>
-                      {s.cls && <span className="text-[10px] px-1.5 py-0.5 bg-sb-correct-pale text-sb-correct-dark rounded font-semibold">{s.cls.name}</span>}
+                      {s.cls && <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${getClassBadgeColor(s.cls.name)}`}>{s.cls.name}</span>}
                     </div>
                     {s.testedToday && (
                       <div className="flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-sb-correct" /><span className="text-[11px] text-sb-correct-dark font-semibold">오늘 응시</span></div>
@@ -425,7 +432,7 @@ export default function AdminPage({ onStudentClick }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sb-ink">{s.name}</span>
-                        {cls && <span className="text-[10px] px-1.5 py-0.5 bg-sb-correct-pale text-sb-correct-dark rounded font-semibold">{cls.name}</span>}
+                        {cls && <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${getClassBadgeColor(cls.name)}`}>{cls.name}</span>}
                       </div>
                       <div className="text-xs text-sb-muted">{studentResults.length > 0 ? `시험 ${studentResults.length}회 · 최근 ${lastResult?.score}%` : '시험 기록 없음'}</div>
                     </div>
@@ -476,6 +483,30 @@ export default function AdminPage({ onStudentClick }: Props) {
           <Plus size={16} />반 만들기
         </button>
       </div>
+
+      {/* Unassigned Students Group */}
+      {(() => {
+        const unassigned = students.filter(s => !classes.some(c => (c.student_ids || []).includes(s.id)));
+        if (unassigned.length === 0) return null;
+        return (
+          <div className="bg-sb-surface-alt border border-sb-line border-dashed rounded-2xl overflow-hidden mb-4 opacity-80">
+            <div className="px-5 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sb-line/50 flex items-center justify-center">
+                <Users size={18} className="text-sb-muted" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sb-ink">미배정 학생</div>
+                <div className="text-xs text-sb-muted">반이 배정되지 않은 학생들 {unassigned.length}명</div>
+              </div>
+            </div>
+            <div className="px-5 pb-4 flex flex-wrap gap-1.5">
+              {unassigned.map(s => (
+                <span key={s.id} className="px-2 py-1 bg-white border border-sb-line rounded-md text-xs font-semibold text-sb-muted">{s.name}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {classes.length === 0 ? (
         <div className="text-center py-16 text-sb-muted text-sm">아직 반이 없습니다. 위에서 반을 만들어 보세요.</div>
