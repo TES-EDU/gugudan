@@ -49,14 +49,16 @@ const StartScreen: React.FC = () => {
           ⚙️ 설정
         </button>
 
-        {/* 성적표 (disabled) */}
+        {/* 선생님 페이지 */}
         <button
-          disabled
+          onClick={() => {
+            window.location.search = '?admin=true';
+          }}
           className="py-4 px-8 rounded-2xl text-2xl font-bold shadow-md
-                     opacity-50 cursor-not-allowed"
-          style={{ backgroundColor: '#E0E0E0', color: '#9E9E9E' }}
+                     transition-all duration-150 active:scale-95 hover:shadow-lg"
+          style={{ backgroundColor: '#E3F2FD', color: '#0D47A1' }}
         >
-          📊 성적표
+          👨‍🏫 선생님 페이지
         </button>
       </div>
 
