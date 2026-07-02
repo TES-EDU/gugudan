@@ -481,7 +481,7 @@ export default function AdminPage({ onStudentClick }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-sb-bg">
+    <div className="h-full bg-sb-bg overflow-y-auto">
       <Header />
       <TabBar />
       {tab === 'students' && StudentsView()}
