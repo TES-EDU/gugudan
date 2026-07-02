@@ -73,28 +73,13 @@ const ResultScreen: React.FC = () => {
     ];
     const studentName = getStudentName() || '학생';
     saveMathResult({
-      user_name: studentName, book_title: '산성비 연산 게임', unit_title: levelId,
+      user_name: studentName, book_title: 'TES 연산 학습', unit_title: levelId,
       unit_display_name: `${chapterTitle} — ${unitDisplayName}`, grade_id: gradeId,
       total_questions: totalAll, correct_count: correctCount, wrong_count: wrongCount,
       missed_count: missedCount, score, accuracy, max_combo: maxCombo, time_seconds: 180,
       correct_answers: ca, incorrect_answers: ia,
-    }).then(id => {
-      if (id) {
-        const url = `${window.location.origin}${window.location.pathname}?report=${id}`;
-        shareUrlRef.current = url; setShareUrl(url);
-      }
     });
   }, []);
-
-  const handleShare = async () => {
-    if (shareState === 'saving') return;
-    if (shareUrl) { await navigator.clipboard.writeText(shareUrl); setShareState('copied'); setTimeout(() => setShareState('idle'), 2000); return; }
-    setShareState('saving');
-    await new Promise(r => setTimeout(r, 800));
-    const url = shareUrlRef.current;
-    if (url) { await navigator.clipboard.writeText(url); setShareState('copied'); setTimeout(() => setShareState('idle'), 2000); }
-    else { setShareState('error'); setTimeout(() => setShareState('idle'), 2000); }
-  };
 
   const createdAt = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -115,14 +100,14 @@ const ResultScreen: React.FC = () => {
               <p className="text-xs text-slate-400">산성비 연산 게임</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-400">TES 영어학원</p>
+              <p className="text-xs text-slate-400">TES 영어·수학학원</p>
               <p className="text-sm text-slate-700">{chapterTitle}</p>
             </div>
           </div>
 
           {/* ===== 학생 이름 + 단원 ===== */}
           <h2 className="text-lg font-bold text-slate-800 mb-1">
-            연산 성적표
+            {getStudentName() || '학생'}의 연산 성적표
           </h2>
           <p className="text-sm text-slate-400 mb-4">{unitDisplayName} · {totalAll}문제</p>
 
@@ -247,7 +232,9 @@ const ResultScreen: React.FC = () => {
                     <div key={i} className="flex items-center gap-3 text-sm bg-red-50 p-3 rounded-lg">
                       <span className="text-red-400 shrink-0">✗</span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-700 truncate text-base">{w.expression}</div>
+                        <div className="font-bold text-slate-700 truncate text-base">
+                          {w.problemId === 'wrong_input' ? '잘못된 입력값' : w.expression}
+                        </div>
                         <div className="text-xs text-slate-400">
                           {w.kind === 'missed' ? '놓친 문제' : `내 답: ${w.userAnswer}`}
                         </div>
@@ -256,8 +243,12 @@ const ResultScreen: React.FC = () => {
                         {w.kind !== 'missed' && w.userAnswer !== null && (
                           <span className="text-red-400 line-through">{w.userAnswer}</span>
                         )}
-                        <span className="text-slate-300">→</span>
-                        <span className="text-emerald-600 font-bold text-sm">{w.correctAnswer}</span>
+                        {w.correctAnswer !== -1 && (
+                          <>
+                            <span className="text-slate-300">→</span>
+                            <span className="text-emerald-600 font-bold text-sm">{w.correctAnswer}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -294,23 +285,7 @@ const ResultScreen: React.FC = () => {
             </div>
           )}
 
-          {/* ===== 공유 버튼 (VOCATEST 동일 스타일) ===== */}
-          <button
-            onClick={handleShare}
-            disabled={shareState === 'saving'}
-            className="w-full bg-white border-[1.5px] border-indigo-200 text-indigo-600 py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors mb-2 disabled:opacity-60"
-          >
-            {shareState === 'saving' && '⏳ 저장 중...'}
-            {shareState === 'copied' && '✅ 링크 복사됨!'}
-            {shareState === 'error' && '❌ 저장 실패. 다시 시도해주세요'}
-            {shareState === 'idle' && (shareUrl ? '🔗 링크 다시 복사' : '🔗 성적표 공유하기')}
-          </button>
-
-          {shareUrl && (
-            <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-3 mb-2 text-[11px] text-slate-400 break-all">
-              📋 <span className="flex-1">{shareUrl}</span>
-            </div>
-          )}
+          {/* 태블릿 용도: 공유 버튼 제거 */}
 
           {/* 다시하기 */}
           <button

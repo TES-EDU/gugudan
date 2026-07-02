@@ -87,7 +87,7 @@ export default function SharedMathReport({ reportId }: Props) {
       }}>
         <TesLogo />
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '12px', color: '#999' }}>TES 영어학원</div>
+          <div style={{ fontSize: '12px', color: '#999' }}>TES 영어·수학학원</div>
           <div style={{ fontSize: '14px', color: '#5D4E37', fontWeight: 600 }}>산성비 연산 게임</div>
         </div>
       </header>
@@ -274,7 +274,7 @@ export default function SharedMathReport({ reportId }: Props) {
                       <span style={{ color: '#E53935', fontSize: '16px' }}>✗</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 'bold', color: '#333', fontSize: '16px' }}>
-                          {w.expression}
+                          {w.problemId === 'wrong_input' ? '잘못된 입력값' : w.expression}
                         </div>
                         <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
                           {w.result === 'missed' ? '놓친 문제' : `내 답: ${w.userAnswer}`}
@@ -284,8 +284,12 @@ export default function SharedMathReport({ reportId }: Props) {
                         {w.result !== 'missed' && (
                           <span style={{ color: '#E53935', textDecoration: 'line-through' }}>{w.userAnswer}</span>
                         )}
-                        <span style={{ color: '#CCC' }}>→</span>
-                        <span style={{ color: '#43A047', fontWeight: 'bold' }}>{w.correctAnswer}</span>
+                        {w.correctAnswer !== -1 && (
+                          <>
+                            <span style={{ color: '#CCC' }}>→</span>
+                            <span style={{ color: '#43A047', fontWeight: 'bold' }}>{w.correctAnswer}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
