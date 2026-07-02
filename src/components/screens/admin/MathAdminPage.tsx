@@ -388,12 +388,13 @@ export default function AdminPage({ onStudentClick }: Props) {
                   />
                   <button onClick={() => onStudentClick(s.name)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
                     <div className="w-9 h-9 rounded-full bg-sb-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sb-ink">{s.name}</span>
-                      {cls && <span className="text-[10px] px-1.5 py-0.5 bg-sb-correct-pale text-sb-correct-dark rounded font-semibold">{cls.name}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sb-ink">{s.name}</span>
+                        {cls && <span className="text-[10px] px-1.5 py-0.5 bg-sb-correct-pale text-sb-correct-dark rounded font-semibold">{cls.name}</span>}
+                      </div>
+                      <div className="text-xs text-sb-muted">{studentResults.length > 0 ? `시험 ${studentResults.length}회 · 최근 ${lastResult?.score}%` : '시험 기록 없음'}</div>
                     </div>
-                    <div className="text-xs text-sb-muted">{studentResults.length > 0 ? `시험 ${studentResults.length}회 · 최근 ${lastResult?.score}%` : '시험 기록 없음'}</div>
                   </button>
                   <ChevronRight size={16} className="text-sb-muted-soft shrink-0 pointer-events-none" />
                 </div>
