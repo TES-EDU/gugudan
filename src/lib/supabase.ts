@@ -39,6 +39,7 @@ export interface MathCorrectAnswer {
 }
 
 export interface MathIncorrectAnswer {
+  problemId?: string;
   expression: string;
   correctAnswer: number;
   userAnswer: number | null;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { analyzeWeakTags } from '../../game/scoring';
-import { getUnitById, CURRICULUM } from '../../data/curriculum';
+import { getUnitById } from '../../data/curriculum';
 import { getStudentName } from '../../utils/storage';
 import { saveMathResult } from '../../lib/supabase';
 import type { MathCorrectAnswer, MathIncorrectAnswer } from '../../lib/supabase';
@@ -32,12 +32,9 @@ const ResultScreen: React.FC = () => {
   const startGame = useGameStore((s) => s.startGame);
   const setScreen = useGameStore((s) => s.setScreen);
 
-  const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle');
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [showWrongList, setShowWrongList] = useState(true);
   const [showCorrectList, setShowCorrectList] = useState(false);
   const savedRef = useRef(false);
-  const shareUrlRef = useRef<string | null>(null);
 
   const unit = getUnitById(levelId);
   const gradeId: GradeId = (unit?.gradeId ?? 'G1') as GradeId;
@@ -54,8 +51,8 @@ const ResultScreen: React.FC = () => {
 
   const wrongItems = [
     ...answeredProblems.filter(p => p.result === 'wrong')
-      .map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, kind: 'wrong' as const })),
-    ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, kind: 'missed' as const })),
+      .map(p => ({ problemId: p.problemId, expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, kind: 'wrong' as const })),
+    ...missedProblems.map(p => ({ problemId: p.id, expression: p.expression, correctAnswer: p.answer, userAnswer: null, kind: 'missed' as const })),
   ];
 
   const correctItems = answeredProblems.filter(p => p.result === 'correct')
