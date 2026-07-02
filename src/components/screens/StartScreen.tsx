@@ -49,15 +49,19 @@ const StartScreen: React.FC = () => {
       <div className="absolute top-6 right-6 flex items-center gap-3">
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors"
+          className="h-10 px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
+          style={{ color: '#5D4E37' }}
         >
-          {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+          {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          <span className="text-sm font-bold tracking-tight">{soundEnabled ? '효과음 ON' : '효과음 OFF'}</span>
         </button>
         <button
           onClick={toggleFullscreen}
-          className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg hover:bg-orange-600 transition-colors"
+          className="h-10 px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
+          style={{ color: '#5D4E37' }}
         >
-          {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+          {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+          <span className="text-sm font-bold tracking-tight">전체화면</span>
         </button>
       </div>
 
