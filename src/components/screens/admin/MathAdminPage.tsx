@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal } from 'lucide-react';
+import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal, CheckCircle2, Circle } from 'lucide-react';
 import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
 
 import MathTeacherLogin from './MathTeacherLogin';
@@ -312,12 +312,16 @@ export default function AdminPage({ onStudentClick }: Props) {
               <div key={s.id} className="bg-sb-surface border border-sb-line rounded-2xl p-4">
                 {/* Name row */}
                 <div className="flex items-center gap-3 mb-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedStudents.has(s.name)}
-                    onChange={() => toggleStudentSelection(s.name)}
-                    className="w-5 h-5 rounded border-sb-line text-sb-primary focus:ring-sb-primary"
-                  />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleStudentSelection(s.name); }}
+                    className="w-6 h-6 shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+                  >
+                    {selectedStudents.has(s.name) ? (
+                      <CheckCircle2 className="w-[1.125rem] h-[1.125rem] text-sb-primary-dark" />
+                    ) : (
+                      <Circle className="w-[1.125rem] h-[1.125rem] text-sb-line hover:text-sb-primary-light" />
+                    )}
+                  </button>
                   <div className="w-11 h-11 rounded-full bg-sb-primary text-white text-base font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -380,12 +384,16 @@ export default function AdminPage({ onStudentClick }: Props) {
               const cls = classes.find(c => (c.student_ids || []).includes(s.id));
               return (
                 <div key={s.id} className="w-full bg-sb-surface border border-sb-line rounded-xl px-4 py-3 flex items-center gap-3 hover:border-sb-primary-light hover:bg-sb-primary-paler transition-all">
-                  <input
-                    type="checkbox"
-                    checked={selectedStudents.has(s.name)}
-                    onChange={() => toggleStudentSelection(s.name)}
-                    className="w-5 h-5 rounded border-sb-line text-sb-primary focus:ring-sb-primary"
-                  />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleStudentSelection(s.name); }}
+                    className="w-6 h-6 shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+                  >
+                    {selectedStudents.has(s.name) ? (
+                      <CheckCircle2 className="w-[1.125rem] h-[1.125rem] text-sb-primary-dark" />
+                    ) : (
+                      <Circle className="w-[1.125rem] h-[1.125rem] text-sb-line hover:text-sb-primary-light" />
+                    )}
+                  </button>
                   <button onClick={() => onStudentClick(s.name)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
                     <div className="w-9 h-9 rounded-full bg-sb-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
                     <div className="flex-1 min-w-0">
