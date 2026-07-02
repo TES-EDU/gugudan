@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '../../stores/gameStore';
-import { getBestScore, getStudentName, setStudentName as saveStudentName } from '../../utils/storage';
+import { getStudentName, setStudentName as saveStudentName } from '../../utils/storage';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
@@ -9,7 +9,6 @@ const StartScreen: React.FC = () => {
   const setScreen = useGameStore((s) => s.setScreen);
   const soundEnabled = useGameStore((s) => s.soundEnabled);
   const setSoundEnabled = useGameStore((s) => s.setSoundEnabled);
-  const bestScore = getBestScore();
   const [name, setName] = useState('');
   const [testCode, setTestCode] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
