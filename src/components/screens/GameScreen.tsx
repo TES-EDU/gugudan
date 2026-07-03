@@ -53,15 +53,15 @@ const GameScreen: React.FC = () => {
       {/* Pause Overlay */}
       {status === 'paused' && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-3xl w-full max-w-[500px] px-10 py-10 shadow-2xl flex flex-col items-center gap-6">
-            <span className="text-5xl">⏸️</span>
-            <h2 className="text-3xl font-bold" style={{ color: '#5D4E37' }}>
+          <div className="bg-white rounded-3xl w-full max-w-[500px] px-6 py-6 md:px-10 md:py-10 landscape:py-4 shadow-2xl flex flex-col items-center gap-4 md:gap-6 max-h-[95vh] overflow-y-auto">
+            <span className="text-4xl md:text-5xl landscape:hidden">⏸️</span>
+            <h2 className="text-2xl md:text-3xl font-bold landscape:mt-2" style={{ color: '#5D4E37' }}>
               일시정지
             </h2>
             
             {/* Speed Control in Pause */}
-            <div className="w-full bg-gray-50 rounded-2xl px-5 py-6 my-2 shadow-inner">
-              <div className="text-sm font-bold text-gray-500 mb-6 text-center">게임 속도 변경</div>
+            <div className="w-full bg-gray-50 rounded-2xl px-5 py-4 md:py-6 my-1 shadow-inner">
+              <div className="text-xs md:text-sm font-bold text-gray-500 mb-4 md:mb-6 landscape:mb-3 text-center">게임 속도 변경</div>
               
               <div className="relative mb-6">
                 {/* Custom Track Container */}
@@ -109,10 +109,10 @@ const GameScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-row gap-4 w-full mt-4">
+            <div className="flex flex-row gap-3 md:gap-4 w-full mt-2 md:mt-4">
               <button
                 onClick={() => goToResult()}
-                className="flex-1 px-4 py-4 rounded-2xl text-xl font-bold shadow-md
+                className="flex-1 px-4 py-3 md:py-4 rounded-2xl text-lg md:text-xl font-bold shadow-md
                            transition-all duration-150 active:scale-95 hover:shadow-lg"
                 style={{ backgroundColor: '#FFFFFF', color: '#5D4E37', border: '2px solid #5D4E37' }}
               >
@@ -120,7 +120,7 @@ const GameScreen: React.FC = () => {
               </button>
               <button
                 onClick={handleResume}
-                className="flex-[2] px-4 py-4 rounded-2xl text-xl font-bold text-white shadow-lg
+                className="flex-[2] px-4 py-3 md:py-4 rounded-2xl text-lg md:text-xl font-bold text-white shadow-lg
                            transition-all duration-150 active:scale-95 hover:shadow-xl"
                 style={{ backgroundColor: '#F5C542' }}
               >

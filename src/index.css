@@ -37,6 +37,8 @@ html, body, #root {
   overflow: hidden;
   font-family: 'OwnglyphParkDaHyun', sans-serif;
   background-color: var(--color-cream);
+  /* Safe area for notch/rounded corners on mobile */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* 스크롤바 숨기기 */

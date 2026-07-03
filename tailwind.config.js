@@ -99,5 +99,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addVariant }) {
+      addVariant('landscape', '@media (orientation: landscape) and (max-height: 500px)');
+    },
+  ],
 }
