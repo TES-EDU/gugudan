@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal, CheckCircle2, Circle, Home } from 'lucide-react';
-import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
+import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, deleteAllMathResults, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
 
 import MathTeacherLogin from './MathTeacherLogin';
 
@@ -238,6 +238,24 @@ export default function AdminPage({ onStudentClick }: Props) {
       await loadAll();
     } else {
       alert('병합에 실패했습니다.');
+      setLoading(false);
+    }
+  };
+
+  const handleActionDeleteAllHistory = async () => {
+    if (!confirm('정말 모든 시험 이력을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+    const finalConfirm = prompt('모든 이력을 삭제하려면 "삭제합니다"를 정확히 입력하세요.');
+    if (finalConfirm !== '삭제합니다') {
+      alert('입력이 일치하지 않아 취소되었습니다.');
+      return;
+    }
+    setLoading(true);
+    const success = await deleteAllMathResults(academy?.id);
+    if (success) {
+      alert('모든 시험 이력이 성공적으로 삭제되었습니다.');
+      await loadAll();
+    } else {
+      alert('시험 이력 삭제에 실패했습니다.');
       setLoading(false);
     }
   };
@@ -590,7 +608,15 @@ export default function AdminPage({ onStudentClick }: Props) {
   const HistoryView = () => (
     <div className="p-5 lg:p-8 max-w-4xl mx-auto">
       <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-1">HISTORY</div>
-      <h1 className="text-2xl font-extrabold text-sb-ink mb-4">시험 이력</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-extrabold text-sb-ink">시험 이력</h1>
+        <button 
+          onClick={handleActionDeleteAllHistory}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sb-wrong-pale text-sb-wrong-dark text-sm font-bold hover:bg-sb-wrong-light transition-colors"
+        >
+          <Trash2 size={16} /> 기록 전체 삭제
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">

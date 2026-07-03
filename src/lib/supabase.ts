@@ -298,6 +298,16 @@ export async function deleteStudentMathResults(userName: string): Promise<boolea
   return true;
 }
 
+export async function deleteAllMathResults(academyId?: string | null): Promise<boolean> {
+  if (!academyId) return false;
+  const { error } = await supabase
+    .from('math_results')
+    .delete()
+    .eq('academy_id', academyId);
+  if (error) { console.error('Failed to delete all math results:', error); return false; }
+  return true;
+}
+
 export async function getStudentMathResults(userName: string): Promise<MathResultRow[]> {
   const { data, error } = await supabase
     .from('math_results')
