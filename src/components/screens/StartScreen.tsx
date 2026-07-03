@@ -57,10 +57,10 @@ const StartScreen: React.FC = () => {
       }}
     >
       {/* Top Right Actions */}
-      <div className="absolute top-3 right-3 md:top-6 md:right-6 flex items-center gap-2 md:gap-3 z-10">
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 md:gap-3 z-10">
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="h-8 md:h-10 px-3 md:px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
+          className="h-9 md:h-10 px-3 md:px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
           style={{ color: '#5D4E37' }}
         >
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -69,7 +69,7 @@ const StartScreen: React.FC = () => {
         {canFullscreen && (
           <button
             onClick={toggleFullscreen}
-            className="h-8 md:h-10 px-3 md:px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
+            className="h-9 md:h-10 px-3 md:px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
             style={{ color: '#5D4E37' }}
           >
             {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
@@ -78,25 +78,25 @@ const StartScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Title - smaller on short screens */}
+      {/* Title */}
       <h1
-        className="text-3xl landscape:text-2xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-12 text-center mt-10 md:mt-0"
+        className="start-title text-5xl md:text-6xl lg:text-7xl font-bold mb-8 md:mb-12 text-center"
         style={{
           color: '#5D4E37',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.15), 0 0 15px rgba(255,193,7,0.3)',
+          textShadow: '3px 3px 6px rgba(0,0,0,0.15), 0 0 20px rgba(255,193,7,0.3)',
         }}
       >
         🌧️ 산성비 연산 게임
       </h1>
 
-      {/* Name and Code Inputs + Start button - horizontal on landscape mobile only */}
-      <div className="w-72 flex flex-col items-center gap-2 landscape:flex-row landscape:gap-3 landscape:w-auto md:flex-col md:w-auto md:gap-4">
+      {/* Name and Code Inputs + Start button */}
+      <div className="start-form flex flex-col items-center gap-3 w-72">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="학생 이름을 입력하세요"
-          className="w-full landscape:w-44 md:w-72 text-center py-2 md:py-3 px-4 rounded-xl text-base md:text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors"
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors"
           style={{ color: '#5D4E37' }}
         />
         <input
@@ -104,12 +104,12 @@ const StartScreen: React.FC = () => {
           value={testCode}
           onChange={(e) => setTestCode(e.target.value)}
           placeholder="응시코드"
-          className="w-full landscape:w-36 md:w-72 text-center py-2 md:py-3 px-4 rounded-xl text-base md:text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors uppercase placeholder:normal-case"
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors uppercase placeholder:normal-case"
           style={{ color: '#5D4E37' }}
         />
         <button
           onClick={handleStart}
-          className="w-full landscape:w-auto md:w-72 py-2 md:py-4 px-8 rounded-2xl text-xl md:text-2xl font-bold text-white shadow-lg
+          className="start-btn w-full py-4 px-8 rounded-2xl text-2xl font-bold text-white shadow-lg
                      transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110 whitespace-nowrap"
           style={{ backgroundColor: '#F5C542' }}
         >
@@ -118,7 +118,7 @@ const StartScreen: React.FC = () => {
       </div>
 
       {/* Teacher page shortcut */}
-      <div className="mt-2 md:mt-4">
+      <div className="mt-3 md:mt-4">
         <button
           onClick={() => {
             window.location.href = '?admin=true';

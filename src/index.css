@@ -103,3 +103,37 @@ button:active {
     @apply animate-fade-in;
   }
 }
+
+/* 모바일 가로 모드 전용 (폰만 해당, 태블릿/PC 제외) */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
+  .start-title {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.75rem !important;
+    margin-top: 0.5rem !important;
+  }
+  .start-form {
+    flex-direction: row !important;
+    width: auto !important;
+    gap: 0.5rem !important;
+  }
+  .start-input {
+    width: 10rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    font-size: 0.95rem !important;
+  }
+  .start-btn {
+    width: auto !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    font-size: 1.1rem !important;
+  }
+  /* 일시정지 팝업 */
+  .pause-modal {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  .pause-icon {
+    display: none !important;
+  }
+}
