@@ -31,7 +31,7 @@ export default function AdminPage({ onStudentClick }: Props) {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<Tab>('students');
+  const [tab, setTab] = useState<Tab>('history');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [customDate, setCustomDate] = useState<string>(''); // YYYY-MM-DD
   const [query, setQuery] = useState('');
@@ -271,9 +271,9 @@ export default function AdminPage({ onStudentClick }: Props) {
 
   // ── Tab Bar ──
   const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
+    { id: 'history', icon: <Search size={16} />, label: '시험 이력' },
     { id: 'students', icon: <Users size={16} />, label: '학생 관리' },
     { id: 'classes', icon: <BookOpen size={16} />, label: '반 관리' },
-    { id: 'history', icon: <Search size={16} />, label: '시험 이력' },
   ];
 
   const TabBar = () => (

@@ -40,7 +40,7 @@ const StartScreen: React.FC = () => {
       alert('이름을 입력해주세요.');
       return;
     }
-    if (testCode.trim().toUpperCase() !== 'LQ4QEG') {
+    if (testCode.trim() !== '1234') {
       alert('응시코드가 올바르지 않습니다.');
       return;
     }
