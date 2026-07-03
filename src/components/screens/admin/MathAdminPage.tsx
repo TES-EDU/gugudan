@@ -1,27 +1,24 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Users, BookOpen, ClipboardList, Plus, Trash2, MoreHorizontal, CheckCircle2, Circle, Home } from 'lucide-react';
-import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, createClass, updateClassStudents, deleteClass, deleteStudentsAdmin, renameStudentAdmin, mergeStudentsAdmin, deleteAllMathResults, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
+import { Copy, Check, Loader2, RefreshCw, LogOut, ChevronRight, Search, Home } from 'lucide-react';
+import { getAllMathResults, getTeacherSession, getMyAcademies, setCurrentAcademy, getCurrentAcademyId, teacherLogout, supabase, getStudents, getClasses, type MathResultRow, type AcademyRow, type StudentRow, type ClassRow } from '../../../lib/supabase';
 
 import MathTeacherLogin from './MathTeacherLogin';
 
 interface Props { onStudentClick: (studentName: string) => void; }
 
-type Tab = 'students' | 'classes' | 'history';
 type DateFilter = 'all' | 'today' | 'yesterday' | '2daysAgo' | 'custom';
+
+// 반 설정: 이름, 비밀번호, 색상
+const BRANCH_CONFIG = [
+  { name: '하계', password: '3456', color: 'from-emerald-400 to-emerald-600', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '🌿' },
+  { name: '중계', password: '6789', color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: '🌟' },
+  { name: '창동', password: '9012', color: 'from-indigo-400 to-indigo-600', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', icon: '🏔️' },
+] as const;
 
 function fmtDateTime(dateStr: string | undefined): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-
-function getClassBadgeColor(name: string) {
-  if (name.includes('하계')) return 'bg-emerald-100 text-emerald-700';
-  if (name.includes('중계')) return 'bg-amber-100 text-amber-700';
-  if (name.includes('창동')) return 'bg-indigo-100 text-indigo-700';
-  return 'bg-sb-correct-pale text-sb-correct-dark';
-}
-
-
 
 export default function AdminPage({ onStudentClick }: Props) {
   const [authed, setAuthed] = useState(false);
@@ -31,20 +28,16 @@ export default function AdminPage({ onStudentClick }: Props) {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<Tab>('history');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
-  const [customDate, setCustomDate] = useState<string>(''); // YYYY-MM-DD
+  const [customDate, setCustomDate] = useState<string>('');
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [mobileStudentFilter, setMobileStudentFilter] = useState<'all' | 'tested' | 'untested' | 'attention'>('all');
-  const [studentSearch, setStudentSearch] = useState('');
   const [academy, setAcademy] = useState<AcademyRow | null>(null);
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
-  // Class management
-  const [newClassName, setNewClassName] = useState('');
-  const [editingClass, setEditingClass] = useState<ClassRow | null>(null);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  // 반 선택 상태
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [branchPassword, setBranchPassword] = useState('');
+  const [branchError, setBranchError] = useState('');
 
   // Auth check
   useEffect(() => {
@@ -80,7 +73,7 @@ export default function AdminPage({ onStudentClick }: Props) {
 
   useEffect(() => { if (authed) loadAll(); }, [authed, loadAll]);
 
-  const handleLogout = async () => { await teacherLogout(); setAuthed(false); setAcademy(null); };
+  const handleLogout = async () => { await teacherLogout(); setAuthed(false); setAcademy(null); setSelectedBranch(null); };
 
   const handleCopy = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -88,20 +81,51 @@ export default function AdminPage({ onStudentClick }: Props) {
     setCopiedId(id); setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleCopyCode = async (code: string) => {
-    await navigator.clipboard.writeText(code);
-    setCopiedCode(code); setTimeout(() => setCopiedCode(null), 2000);
+  // 반 선택 처리
+  const handleBranchSelect = (branchName: string) => {
+    setSelectedBranch(branchName);
+    setBranchPassword('');
+    setBranchError('');
   };
 
-  // Filtered results
+  const handleBranchLogin = () => {
+    const config = BRANCH_CONFIG.find(b => b.name === selectedBranch);
+    if (!config) return;
+    if (branchPassword !== config.password) {
+      setBranchError('비밀번호가 올바르지 않습니다.');
+      return;
+    }
+    // 비밀번호 일치 — 반 진입 (selectedBranch 유지)
+    setBranchError('');
+  };
+
+  const isBranchUnlocked = useMemo(() => {
+    if (!selectedBranch) return false;
+    const config = BRANCH_CONFIG.find(b => b.name === selectedBranch);
+    return config ? branchPassword === config.password : false;
+  }, [selectedBranch, branchPassword]);
+
+  // 선택한 반에 속한 학생 이름 목록
+  const branchStudentNames = useMemo(() => {
+    if (!selectedBranch) return new Set<string>();
+    const matchedClass = classes.find(c => c.name.includes(selectedBranch));
+    if (!matchedClass) return new Set<string>();
+    const studentIds = new Set(matchedClass.student_ids || []);
+    return new Set(students.filter(s => studentIds.has(s.id)).map(s => s.name));
+  }, [selectedBranch, classes, students]);
+
+  // Filtered results (반별 + 날짜 + 검색)
   const filtered = useMemo(() => {
     let data = results;
-    
+
+    // 반 필터
+    if (selectedBranch && isBranchUnlocked) {
+      data = data.filter(r => branchStudentNames.has(r.user_name));
+    }
+
     if (dateFilter !== 'all') {
       const today = new Date();
       let targetDateStr = '';
-      
-      // en-CA format gives YYYY-MM-DD
       if (dateFilter === 'today') {
         targetDateStr = today.toLocaleDateString('en-CA');
       } else if (dateFilter === 'yesterday') {
@@ -113,7 +137,6 @@ export default function AdminPage({ onStudentClick }: Props) {
       } else if (dateFilter === 'custom' && customDate) {
         targetDateStr = customDate;
       }
-
       if (targetDateStr) {
         data = data.filter(r => {
           if (!r.created_at) return false;
@@ -125,140 +148,8 @@ export default function AdminPage({ onStudentClick }: Props) {
 
     if (query.trim()) data = data.filter(r => r.user_name.includes(query.trim()));
     return data;
-  }, [results, dateFilter, customDate, query]);
+  }, [results, selectedBranch, isBranchUnlocked, branchStudentNames, dateFilter, customDate, query]);
 
-
-  // Ghost students (in results but not in students table)
-  const allStudents = useMemo(() => {
-    const existingNames = new Set(students.map(s => s.name));
-    const ghosts = Array.from(new Set(results.map(r => r.user_name))).filter(name => !existingNames.has(name));
-    const ghostRows: StudentRow[] = ghosts.map(name => ({ id: `ghost_${name}`, name, grade: null, academy_id: academy?.id ?? null }));
-    return [...students, ...ghostRows];
-  }, [students, results, academy]);
-
-  // Per-student stats for mobile rich cards
-  const studentStats = useMemo(() => {
-    const today = new Date().toDateString();
-    return allStudents.map(s => {
-      const sr = results.filter(r => r.user_name === s.name);
-      const cls = classes.find(c => (c.student_ids || []).includes(s.id));
-      const scores = sr.map(r => r.accuracy);
-      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-      const wCnt = sr.reduce((sum, r) => sum + (r.incorrect_answers?.length || 0), 0);
-      const tQ = sr.reduce((sum, r) => sum + r.total_questions, 0);
-      const wrongRate = tQ ? Math.round((wCnt / tQ) * 100) : null;
-      const testedToday = sr.some(r => r.created_at && new Date(r.created_at).toDateString() === today);
-      const trend = scores.length >= 2 ? scores[0] - scores[Math.min(scores.length - 1, 3)] : null;
-      const needsAttention = (avg !== null && avg < 50) || (wrongRate !== null && wrongRate > 30);
-      return { ...s, cls, latest: sr[0], avg, wrongRate, testedToday, trend, needsAttention, testCount: sr.length };
-    });
-  }, [allStudents, results, classes]);
-
-  const todayTestedCount = useMemo(() => studentStats.filter(s => s.testedToday).length, [studentStats]);
-  const untestedCount = useMemo(() => studentStats.filter(s => !s.testedToday && s.testCount > 0).length, [studentStats]);
-  const attentionCount = useMemo(() => studentStats.filter(s => s.needsAttention).length, [studentStats]);
-
-  const mobileFilteredStudents = useMemo(() => {
-    let list = studentStats;
-    if (mobileStudentFilter === 'tested') list = list.filter(s => s.testedToday);
-    if (mobileStudentFilter === 'untested') list = list.filter(s => !s.testedToday && s.testCount > 0);
-    if (mobileStudentFilter === 'attention') list = list.filter(s => s.needsAttention);
-    if (studentSearch.trim()) list = list.filter(s => s.name.includes(studentSearch.trim()));
-    return list;
-  }, [studentStats, mobileStudentFilter, studentSearch]);
-
-  // Class management handlers
-  const handleCreateClass = async () => {
-    if (!newClassName.trim()) return;
-    await createClass(newClassName.trim());
-    setNewClassName('');
-    loadAll();
-  };
-
-  const handleDeleteClass = async (id: string) => {
-    if (!confirm('이 반을 삭제하시겠습니까?')) return;
-    await deleteClass(id);
-    loadAll();
-  };
-
-  const handleToggleStudent = async (cls: ClassRow, studentId: string) => {
-    const ids = cls.student_ids || [];
-    const newIds = ids.includes(studentId) ? ids.filter(id => id !== studentId) : [...ids, studentId];
-    await updateClassStudents(cls.id, newIds);
-    loadAll();
-  };
-
-  const toggleStudentSelection = (name: string) => {
-    const next = new Set(selectedStudents);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    setSelectedStudents(next);
-  };
-
-  const handleActionRename = async () => {
-    const oldName = Array.from(selectedStudents)[0];
-    const newName = prompt(`'${oldName}' 학생의 새 이름을 입력하세요:`);
-    if (!newName || newName.trim() === '' || newName === oldName) return;
-    setLoading(true);
-    const success = await renameStudentAdmin(oldName, newName.trim(), academy?.id);
-    if (success) {
-      setSelectedStudents(new Set());
-      await loadAll();
-    } else {
-      alert('이름 변경에 실패했습니다. (이미 존재하는 이름일 수 있습니다.)');
-      setLoading(false);
-    }
-  };
-
-  const handleActionDelete = async () => {
-    const names = Array.from(selectedStudents);
-    if (!confirm(`정말 선택한 ${names.length}명의 학생과 시험 기록을 삭제하시겠습니까?`)) return;
-    setLoading(true);
-    const success = await deleteStudentsAdmin(names, academy?.id);
-    if (success) {
-      setSelectedStudents(new Set());
-      await loadAll();
-    } else {
-      alert('삭제에 실패했습니다.');
-      setLoading(false);
-    }
-  };
-
-  const handleActionMerge = async () => {
-    const names = Array.from(selectedStudents);
-    const target = prompt(`선택한 ${names.length}명의 학생을 합칠 '진짜 이름'을 정확히 입력하세요:\n\n선택된 이름들: ${names.join(', ')}`);
-    if (!target || target.trim() === '') return;
-    if (!names.includes(target.trim())) {
-      if (!confirm(`입력하신 이름 '${target}'이 선택된 목록에 없습니다. 그래도 계속 진행할까요?`)) return;
-    }
-    setLoading(true);
-    const success = await mergeStudentsAdmin(names, target.trim(), academy?.id);
-    if (success) {
-      setSelectedStudents(new Set());
-      await loadAll();
-    } else {
-      alert('병합에 실패했습니다.');
-      setLoading(false);
-    }
-  };
-
-  const handleActionDeleteAllHistory = async () => {
-    if (!confirm('정말 모든 시험 이력을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
-    const finalConfirm = prompt('모든 이력을 삭제하려면 "삭제합니다"를 정확히 입력하세요.');
-    if (finalConfirm !== '삭제합니다') {
-      alert('입력이 일치하지 않아 취소되었습니다.');
-      return;
-    }
-    setLoading(true);
-    const success = await deleteAllMathResults(academy?.id);
-    if (success) {
-      alert('모든 시험 이력이 성공적으로 삭제되었습니다.');
-      await loadAll();
-    } else {
-      alert('시험 이력 삭제에 실패했습니다.');
-      setLoading(false);
-    }
-  };
 
   if (authChecking) return <div className="min-h-screen bg-sb-bg flex items-center justify-center"><Loader2 size={32} className="animate-spin text-sb-primary" /></div>;
   if (!authed) return <MathTeacherLogin onLogin={() => {}} denied={denied} />;
@@ -272,8 +163,19 @@ export default function AdminPage({ onStudentClick }: Props) {
         <span className="text-sm font-extrabold text-sb-ink hidden md:inline">TES MATH</span>
         <div className="w-px h-3 bg-sb-line hidden md:block" />
         <span className="text-xs text-sb-muted font-medium hidden md:inline">· {academy?.name || '관리'}</span>
+        {selectedBranch && isBranchUnlocked && (
+          <>
+            <div className="w-px h-3 bg-sb-line" />
+            <span className="text-xs font-bold text-sb-primary-dark">{selectedBranch}반</span>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-1 md:gap-3 shrink-0">
+        {selectedBranch && isBranchUnlocked && (
+          <button onClick={() => { setSelectedBranch(null); setBranchPassword(''); }} className="p-2 md:p-0 flex items-center gap-1.5 text-sm text-sb-muted hover:text-sb-primary-dark transition-colors mr-1 md:mr-2">
+            <Home size={16} /><span className="hidden md:inline">반 선택으로</span>
+          </button>
+        )}
         <button onClick={() => window.location.href = window.location.pathname} className="p-2 md:p-0 flex items-center gap-1.5 text-sm text-sb-muted hover:text-sb-primary-dark transition-colors mr-1 md:mr-2">
           <Home size={16} /><span className="hidden md:inline">메인으로</span>
         </button>
@@ -287,335 +189,70 @@ export default function AdminPage({ onStudentClick }: Props) {
     </header>
   );
 
-  // ── Tab Bar ──
-  const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: 'history', icon: <Search size={16} />, label: '시험 이력' },
-    { id: 'students', icon: <Users size={16} />, label: '학생 관리' },
-    { id: 'classes', icon: <BookOpen size={16} />, label: '반 관리' },
-  ];
-
-  const TabBar = () => (
-    <div className="flex border-b border-sb-line bg-sb-surface px-4 gap-1 overflow-x-auto">
-      {TABS.map(t => (
-        <button key={t.id} onClick={() => setTab(t.id)}
-          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-            tab === t.id ? 'border-sb-primary-dark text-sb-primary-dark' : 'border-transparent text-sb-muted hover:text-sb-ink'
-          }`}>
-          {t.icon}{t.label}
-        </button>
-      ))}
-    </div>
-  );
-
-
-  // ── Students Tab ──
-  const StudentsView = () => (
-    <div className="p-4 md:p-5 lg:p-8 max-w-4xl mx-auto">
-      <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-1">STUDENTS</div>
-      <h1 className="text-2xl font-extrabold text-sb-ink mb-4 md:mb-6">학생 관리 <span className="text-sb-muted font-semibold text-lg ml-1">{students.length}명</span></h1>
-
-      {/* ── Mobile: Rich student cards ── */}
-      <div className="md:hidden">
-        {/* Status summary cards */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-sb-correct-pale rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-sb-correct" /><span className="text-[10px] font-bold text-sb-correct-dark">오늘 응시</span></div>
-            <div className="text-xl font-extrabold text-sb-correct-dark tabular-nums">{todayTestedCount}<span className="text-xs font-bold">명</span></div>
-          </div>
-          <div className="bg-sb-orange-pale rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-sb-orange" /><span className="text-[10px] font-bold text-sb-orange-dark">미응시</span></div>
-            <div className="text-xl font-extrabold text-sb-orange-dark tabular-nums">{untestedCount}<span className="text-xs font-bold">명</span></div>
-          </div>
-          <div className="bg-sb-wrong-pale rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-sb-wrong" /><span className="text-[10px] font-bold text-sb-wrong-dark">관리 필요</span></div>
-            <div className="text-xl font-extrabold text-sb-wrong-dark tabular-nums">{attentionCount}<span className="text-xs font-bold">명</span></div>
-          </div>
+  // ── Branch Selection Screen ──
+  const BranchSelectView = () => (
+    <div className="flex-1 flex items-center justify-center p-6">
+      <div className="w-full max-w-2xl">
+        <div className="text-center mb-10">
+          <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-2">SELECT BRANCH</div>
+          <h1 className="text-3xl font-extrabold text-sb-ink mb-2">반을 선택하세요</h1>
+          <p className="text-sm text-sb-muted">비밀번호를 입력하면 해당 반의 성적을 볼 수 있습니다</p>
         </div>
 
-        {/* Filter pills */}
-        <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar">
-          {([
-            { id: 'all' as const, label: '전체', count: students.length },
-            { id: 'tested' as const, label: '응시', count: todayTestedCount },
-            { id: 'untested' as const, label: '미응시', count: untestedCount },
-            { id: 'attention' as const, label: '관리', count: attentionCount },
-          ]).map(f => (
-            <button key={f.id} onClick={() => setMobileStudentFilter(f.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-                mobileStudentFilter === f.id ? 'bg-sb-primary-dark text-white' : 'bg-sb-surface border border-sb-line text-sb-muted'
-              }`}>{f.label} {f.count}</button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {BRANCH_CONFIG.map(b => (
+            <button
+              key={b.name}
+              onClick={() => handleBranchSelect(b.name)}
+              className={`relative rounded-2xl border-2 p-6 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                selectedBranch === b.name ? `${b.border} ${b.bg} shadow-md` : 'border-sb-line bg-sb-surface hover:border-sb-primary-light'
+              }`}
+            >
+              <div className="text-4xl mb-3">{b.icon}</div>
+              <div className={`text-xl font-extrabold mb-1 ${selectedBranch === b.name ? b.text : 'text-sb-ink'}`}>
+                {b.name}반
+              </div>
+              {selectedBranch === b.name && (
+                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold" style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }}>
+                  ✓
+                </div>
+              )}
+            </button>
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-sb-muted-soft" />
-          <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
-            placeholder="학생 이름 검색..."
-            className="w-full h-10 pl-9 pr-3 rounded-xl border border-sb-line bg-sb-surface text-sm outline-none focus:border-sb-primary" />
-        </div>
-
-        {/* Rich student cards */}
-        {loading ? (
-          <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-sb-muted" /></div>
-        ) : mobileFilteredStudents.length === 0 ? (
-          <div className="text-center py-16 text-sb-muted text-sm">{studentSearch.trim() ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}</div>
-        ) : (
-          <div className="space-y-3">
-            {mobileFilteredStudents.map(s => (
-              <div key={s.id} className="bg-sb-surface border border-sb-line rounded-2xl p-4">
-                {/* Name row */}
-                <div className="flex items-center gap-3 mb-3">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); toggleStudentSelection(s.name); }}
-                    className="w-6 h-6 shrink-0 transition-colors flex items-center justify-center cursor-pointer"
-                  >
-                    {selectedStudents.has(s.name) ? (
-                      <CheckCircle2 className="w-[1.125rem] h-[1.125rem] text-sb-primary-dark" />
-                    ) : (
-                      <Circle className="w-[1.125rem] h-[1.125rem] text-sb-line hover:text-sb-primary-light" />
-                    )}
-                  </button>
-                  <div className="w-11 h-11 rounded-full bg-sb-primary text-white text-base font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sb-ink">{s.name}</span>
-                      {s.cls && <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${getClassBadgeColor(s.cls.name)}`}>{s.cls.name}</span>}
-                    </div>
-                    {s.testedToday && (
-                      <div className="flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-sb-correct" /><span className="text-[11px] text-sb-correct-dark font-semibold">오늘 응시</span></div>
-                    )}
-                    {!s.testedToday && s.testCount === 0 && <div className="text-[11px] text-sb-muted mt-0.5">시험 기록 없음</div>}
-                  </div>
-                  <button onClick={() => onStudentClick(s.name)} className="p-1.5 text-sb-muted hover:text-sb-ink"><MoreHorizontal size={18} /></button>
-                </div>
-
-                {s.testCount > 0 && (
-                  <>
-                    {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-3 mb-3">
-                      <div><div className="text-[10px] text-sb-muted mb-0.5">최근 점수</div><div className="text-lg font-extrabold text-sb-ink tabular-nums">{s.latest?.score ?? '-'}<span className="text-[10px] font-bold text-sb-muted">점</span></div></div>
-                      <div><div className="text-[10px] text-sb-muted mb-0.5">평균</div><div className="text-lg font-extrabold text-sb-ink tabular-nums">{s.avg ?? '-'}<span className="text-[10px] font-bold text-sb-muted">점</span></div></div>
-                      <div><div className="text-[10px] text-sb-muted mb-0.5">오답률</div><div className="text-lg font-extrabold text-sb-ink tabular-nums">{s.wrongRate ?? '-'}<span className="text-[10px] font-bold text-sb-muted">%</span></div></div>
-                    </div>
-                    {/* Progress + trend */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[11px] text-sb-muted shrink-0">최근 {Math.min(s.testCount, 4)}회</span>
-                      <div className="flex-1 h-1.5 bg-sb-line rounded-full overflow-hidden"><div className="h-full bg-sb-primary-dark rounded-full" style={{ width: `${s.avg ?? 0}%` }} /></div>
-                      {s.trend !== null && <span className={`text-[11px] font-bold tabular-nums shrink-0 ${s.trend >= 0 ? 'text-sb-correct' : 'text-sb-wrong'}`}>{s.trend >= 0 ? '↑' : '↓'}{Math.abs(s.trend)}점</span>}
-                    </div>
-                    {/* Action buttons */}
-                    <div className="flex gap-2">
-                      <button onClick={() => onStudentClick(s.name)} className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-sb-primary-dark text-white text-xs font-bold cursor-pointer">
-                        <ChevronRight size={13} />이력 보기
-                      </button>
-                      <button className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-sb-surface border border-sb-line text-sb-muted text-xs font-semibold">
-                        <ClipboardList size={13} />시험 이력
-                      </button>
-                    </div>
-                  </>
-                )}
-                {s.testCount === 0 && (
-                  <button onClick={() => onStudentClick(s.name)} className="w-full h-9 flex items-center justify-center gap-1.5 rounded-lg bg-sb-surface-alt text-sb-muted text-xs font-semibold">
-                    <ChevronRight size={13} />상세 보기
-                  </button>
-                )}
-              </div>
-            ))}
+        {/* Password input */}
+        {selectedBranch && (
+          <div className="max-w-sm mx-auto animate-[fadeIn_0.3s_ease]">
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={branchPassword}
+                onChange={(e) => { setBranchPassword(e.target.value); setBranchError(''); }}
+                onKeyDown={(e) => e.key === 'Enter' && handleBranchLogin()}
+                placeholder={`${selectedBranch}반 비밀번호`}
+                className="flex-1 h-12 px-4 rounded-xl border-2 border-sb-line bg-sb-surface text-center text-lg font-bold outline-none focus:border-sb-primary transition-colors"
+              />
+              <button
+                onClick={handleBranchLogin}
+                className="h-12 px-6 rounded-xl bg-sb-primary-dark text-white font-bold text-sm shrink-0 hover:bg-sb-primary transition-colors"
+              >
+                확인
+              </button>
+            </div>
+            {branchError && <p className="text-red-500 text-sm font-medium text-center mt-2">{branchError}</p>}
           </div>
         )}
       </div>
-
-      {/* ── Tablet/Desktop: existing simple list ── */}
-      <div className="hidden md:block">
-        {loading ? <div className="flex justify-center py-20"><Loader2 size={28} className="animate-spin text-sb-muted" /></div> : students.length === 0 ? (
-          <div className="text-center py-20 text-sb-muted text-sm">등록된 학생이 없습니다.<br />학생이 응시 코드로 시험을 치면 자동으로 등록됩니다.</div>
-        ) : (
-          <div className="grid gap-2">
-            {students.map(s => {
-              const studentResults = results.filter(r => r.user_name === s.name);
-              const lastResult = studentResults[0];
-              const cls = classes.find(c => (c.student_ids || []).includes(s.id));
-              return (
-                <div key={s.id} className="w-full bg-sb-surface border border-sb-line rounded-xl px-4 py-3 flex items-center gap-3 hover:border-sb-primary-light hover:bg-sb-primary-paler transition-all">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); toggleStudentSelection(s.name); }}
-                    className="w-6 h-6 shrink-0 transition-colors flex items-center justify-center cursor-pointer"
-                  >
-                    {selectedStudents.has(s.name) ? (
-                      <CheckCircle2 className="w-[1.125rem] h-[1.125rem] text-sb-primary-dark" />
-                    ) : (
-                      <Circle className="w-[1.125rem] h-[1.125rem] text-sb-line hover:text-sb-primary-light" />
-                    )}
-                  </button>
-                  <button onClick={() => onStudentClick(s.name)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-full bg-sb-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sb-ink">{s.name}</span>
-                        {cls && <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${getClassBadgeColor(cls.name)}`}>{cls.name}</span>}
-                      </div>
-                      <div className="text-xs text-sb-muted">{studentResults.length > 0 ? `시험 ${studentResults.length}회 · 최근 ${lastResult?.score}%` : '시험 기록 없음'}</div>
-                    </div>
-                  </button>
-                  <ChevronRight size={16} className="text-sb-muted-soft shrink-0 pointer-events-none" />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Floating Action Bar for Selected Students */}
-      {selectedStudents.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-sb-ink text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 z-50 animate-fade-in whitespace-nowrap">
-          <span className="font-bold">{selectedStudents.size}명 선택됨</span>
-          <div className="w-px h-5 bg-white/20" />
-          
-          {selectedStudents.size === 1 ? (
-            <button onClick={handleActionRename} className="text-sm font-semibold hover:text-sb-primary-light transition-colors">이름 변경</button>
-          ) : (
-            <button onClick={handleActionMerge} className="text-sm font-semibold hover:text-sb-primary-light transition-colors">선택 병합</button>
-          )}
-          
-          <button onClick={handleActionDelete} className="text-sm font-semibold text-sb-wrong hover:text-sb-wrong-light transition-colors ml-2">삭제</button>
-          
-          <button onClick={() => setSelectedStudents(new Set())} className="ml-2 p-1 text-white/50 hover:text-white transition-colors">
-            ✕
-          </button>
-        </div>
-      )}
     </div>
   );
 
-  // ── Classes Tab ──
-  const ClassesView = () => (
-    <div className="p-5 lg:p-8 max-w-4xl mx-auto">
-      <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-1">CLASSES</div>
-      <h1 className="text-2xl font-extrabold text-sb-ink mb-6">반 관리</h1>
-
-      {/* Create class */}
-      <div className="flex gap-2 mb-6">
-        <input value={newClassName} onChange={e => setNewClassName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleCreateClass()}
-          placeholder="새 반 이름 (예: 하계관 중등)" className="flex-1 h-11 px-4 rounded-xl border border-sb-line bg-sb-surface text-sm outline-none focus:border-sb-primary" />
-        <button onClick={handleCreateClass} disabled={!newClassName.trim()}
-          className="h-11 px-5 rounded-xl bg-sb-primary-dark text-white text-sm font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap shrink-0">
-          <Plus size={16} />반 만들기
-        </button>
-      </div>
-
-      {/* Unassigned Students Group */}
-      {(() => {
-        const unassigned = students.filter(s => !classes.some(c => (c.student_ids || []).includes(s.id)));
-        if (unassigned.length === 0) return null;
-        return (
-          <div className="bg-sb-surface-alt border border-sb-line border-dashed rounded-2xl overflow-hidden mb-4 opacity-80">
-            <div className="px-5 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sb-line/50 flex items-center justify-center">
-                <Users size={18} className="text-sb-muted" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sb-ink">미배정 학생</div>
-                <div className="text-xs text-sb-muted">반이 배정되지 않은 학생들 {unassigned.length}명</div>
-              </div>
-            </div>
-            <div className="px-5 pb-4 flex flex-wrap gap-1.5">
-              {unassigned.map(s => (
-                <span key={s.id} className="px-2 py-1 bg-white border border-sb-line rounded-md text-xs font-semibold text-sb-muted">{s.name}</span>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {classes.length === 0 ? (
-        <div className="text-center py-16 text-sb-muted text-sm">아직 반이 없습니다. 위에서 반을 만들어 보세요.</div>
-      ) : (
-        <div className="space-y-3">
-          {classes.map(cls => {
-            const memberStudents = students.filter(s => (cls.student_ids || []).includes(s.id));
-            const isEditing = editingClass?.id === cls.id;
-            return (
-              <div key={cls.id} className="bg-sb-surface border border-sb-line rounded-2xl overflow-hidden">
-                <div className="px-5 py-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sb-correct-pale flex items-center justify-center">
-                    <BookOpen size={18} className="text-sb-correct-dark" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sb-ink">{cls.name}</div>
-                    <div className="text-xs text-sb-muted">{memberStudents.length}명 · 응시코드: <span className="font-mono font-bold text-sb-primary-dark">{cls.test_code || '없음'}</span></div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {cls.test_code && (
-                      <button onClick={() => handleCopyCode(cls.test_code!)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${copiedCode === cls.test_code ? 'bg-sb-correct-pale text-sb-correct-dark' : 'bg-sb-surface-alt text-sb-muted hover:bg-sb-primary-pale hover:text-sb-primary-dark'}`}>
-                        {copiedCode === cls.test_code ? <><Check size={12} /> 복사됨</> : <><Copy size={12} /> 코드 복사</>}
-                      </button>
-                    )}
-                    <button onClick={() => setEditingClass(isEditing ? null : cls)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-sb-surface-alt text-sb-muted hover:bg-sb-primary-pale hover:text-sb-primary-dark">
-                      {isEditing ? '닫기' : '학생 배정'}
-                    </button>
-                    <button onClick={() => handleDeleteClass(cls.id)}
-                      className="p-1.5 rounded-lg text-sb-muted hover:bg-sb-wrong-pale hover:text-sb-wrong-dark transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Student tags */}
-                {memberStudents.length > 0 && !isEditing && (
-                  <div className="px-5 pb-3 flex flex-wrap gap-1.5">
-                    {memberStudents.slice(0, 8).map(s => (
-                      <span key={s.id} className="px-2 py-1 bg-sb-surface-alt rounded-md text-xs font-semibold text-sb-ink">{s.name}</span>
-                    ))}
-                    {memberStudents.length > 8 && <span className="px-2 py-1 text-xs text-sb-muted">+{memberStudents.length - 8}명</span>}
-                  </div>
-                )}
-
-                {/* Student assignment panel */}
-                {isEditing && (
-                  <div className="border-t border-sb-line px-5 py-4 bg-sb-surface-alt/30">
-                    <div className="text-xs font-bold text-sb-muted mb-3">학생 체크로 반에 배정/해제</div>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-64 overflow-y-auto">
-                      {students.map(s => {
-                        const inClass = (cls.student_ids || []).includes(s.id);
-                        return (
-                          <button key={s.id} onClick={() => handleToggleStudent(cls, s.id)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
-                              inClass ? 'bg-sb-primary-pale border border-sb-primary-light font-bold text-sb-primary-dark' : 'bg-sb-surface border border-sb-line text-sb-ink hover:border-sb-primary-light'
-                            }`}>
-                            <span className={`w-4 h-4 rounded border-2 flex items-center justify-center text-[10px] ${
-                              inClass ? 'bg-sb-primary border-sb-primary text-white' : 'border-sb-line'
-                            }`}>{inClass && '✓'}</span>
-                            {s.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  // ── History Tab (existing results list) ──
+  // ── History View (filtered by branch) ──
   const HistoryView = () => (
     <div className="p-5 lg:p-8 max-w-4xl mx-auto">
       <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-1">HISTORY</div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-extrabold text-sb-ink">시험 이력</h1>
-        <button 
-          onClick={handleActionDeleteAllHistory}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sb-wrong-pale text-sb-wrong-dark text-sm font-bold hover:bg-sb-wrong-light transition-colors"
-        >
-          <Trash2 size={16} /> 기록 전체 삭제
-        </button>
+        <h1 className="text-2xl font-extrabold text-sb-ink">{selectedBranch}반 시험 이력</h1>
       </div>
 
       {/* Filters */}
@@ -668,7 +305,7 @@ export default function AdminPage({ onStudentClick }: Props) {
             return (
               <div key={r.id} onClick={() => onStudentClick(r.user_name)}
                 className="w-full bg-sb-surface rounded-xl border border-sb-line px-4 py-3 flex items-center gap-3 hover:border-sb-primary-light hover:bg-sb-primary-paler transition-all cursor-pointer">
-                <div className={`text-2xl font-extrabold w-14 text-right shrink-0 tabular-nums $text-sb-primary-dark`}>
+                <div className={`text-2xl font-extrabold w-14 text-right shrink-0 tabular-nums text-sb-primary-dark`}>
                   {r.accuracy}<span className="text-xs font-bold">%</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -695,12 +332,9 @@ export default function AdminPage({ onStudentClick }: Props) {
   );
 
   return (
-    <div className="h-full bg-sb-bg overflow-y-auto">
+    <div className="h-full bg-sb-bg overflow-y-auto flex flex-col">
       <Header />
-      <TabBar />
-      {tab === 'students' && StudentsView()}
-      {tab === 'classes' && ClassesView()}
-      {tab === 'history' && HistoryView()}
+      {!selectedBranch || !isBranchUnlocked ? BranchSelectView() : HistoryView()}
     </div>
   );
 }

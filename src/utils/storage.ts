@@ -8,7 +8,41 @@ const STORAGE_KEYS = {
   SELECTED_MODE: 'mathrain_selectedMode',
   SELECTED_LEVEL: 'mathrain_selectedLevel',
   STUDENT_NAME: 'mathrain_studentName',
+  LAST_BRANCH: 'mathrain_lastBranch',
 } as const;
+
+// ============================================
+// 현재 로그인 학생 (sessionStorage — 탭 닫으면 초기화)
+// ============================================
+
+export interface StudentSession {
+  id: string;
+  name: string;
+  branch: string;       // '하계' | '중계' | '창동'
+  academy_id: string | null;
+  class_id: string | null;
+}
+
+export function setCurrentStudent(student: StudentSession): void {
+  sessionStorage.setItem('mathrain_currentStudent', JSON.stringify(student));
+}
+
+export function getCurrentStudent(): StudentSession | null {
+  const stored = sessionStorage.getItem('mathrain_currentStudent');
+  return stored ? JSON.parse(stored) : null;
+}
+
+export function getCurrentStudentId(): string | null {
+  return getCurrentStudent()?.id ?? null;
+}
+
+export function getCurrentAcademyIdFromSession(): string | null {
+  return getCurrentStudent()?.academy_id ?? null;
+}
+
+export function clearCurrentStudent(): void {
+  sessionStorage.removeItem('mathrain_currentStudent');
+}
 
 export function getStudentName(): string {
   return localStorage.getItem(STORAGE_KEYS.STUDENT_NAME) || '';
@@ -16,6 +50,15 @@ export function getStudentName(): string {
 
 export function setStudentName(name: string): void {
   localStorage.setItem(STORAGE_KEYS.STUDENT_NAME, name.trim());
+}
+
+// 마지막 선택 지점 기억 (편의성)
+export function setLastBranch(branch: string): void {
+  localStorage.setItem(STORAGE_KEYS.LAST_BRANCH, branch);
+}
+
+export function getLastBranch(): string {
+  return localStorage.getItem(STORAGE_KEYS.LAST_BRANCH) || '';
 }
 
 export function getBestScore(): number {

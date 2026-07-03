@@ -3,6 +3,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { analyzeWeakTags } from '../../game/scoring';
 import { getUnitById } from '../../data/curriculum';
 import { getStudentName } from '../../utils/storage';
+import { getCurrentStudent } from '../../utils/storage';
 import { saveMathResult } from '../../lib/supabase';
 import type { MathCorrectAnswer, MathIncorrectAnswer } from '../../lib/supabase';
 import type { GradeId } from '../../game/types';
@@ -69,12 +70,15 @@ const ResultScreen: React.FC = () => {
       ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, result: 'missed' as const, unitId: levelId })),
     ];
     const studentName = getStudentName() || '학생';
+    const session = getCurrentStudent();
     saveMathResult({
       user_name: studentName, book_title: 'TES 연산 학습', unit_title: levelId,
       unit_display_name: `${chapterTitle} — ${unitDisplayName}`, grade_id: gradeId,
       total_questions: totalAll, correct_count: correctCount, wrong_count: wrongCount,
       missed_count: missedCount, score, accuracy, max_combo: maxCombo, time_seconds: 180,
       correct_answers: ca, incorrect_answers: ia,
+      student_id: session?.id ?? null,
+      academy_id: session?.academy_id ?? null,
     });
   }, []);
 

@@ -1,23 +1,93 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '../../stores/gameStore';
-import { getStudentName, setStudentName as saveStudentName } from '../../utils/storage';
+import {
+  setStudentName as saveStudentName,
+  setCurrentStudent,
+  getLastBranch,
+  setLastBranch,
+  type StudentSession,
+} from '../../utils/storage';
+import {
+  findStudent,
+  createStudentProfile,
+  addStudentToClass,
+  getClasses,
+  setCurrentAcademy,
+  type StudentRow,
+  type ClassRow,
+} from '../../lib/supabase';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
+const PASSWORD = '1234';
+const BRANCHES = ['하계', '중계', '창동'] as const;
+type Branch = typeof BRANCHES[number];
+
+// 동명이인 확인 모달
+function DuplicateModal({
+  student,
+  branch,
+  onConfirm,
+  onNewProfile,
+}: {
+  student: StudentRow;
+  branch: Branch;
+  onConfirm: () => void;
+  onNewProfile: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div
+        className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl"
+        style={{ fontFamily: FONT_FAMILY }}
+      >
+        <div className="text-5xl mb-3">👋</div>
+        <h3 className="text-xl font-bold mb-1" style={{ color: '#5D4E37' }}>
+          {student.name}님,
+        </h3>
+        <p className="text-sm mb-4" style={{ color: '#8D7B68' }}>
+          {branch}반 학생이 맞나요?
+        </p>
+        <button
+          onClick={onConfirm}
+          className="w-full py-3.5 mb-3 text-white font-bold rounded-xl shadow-md transition-all hover:brightness-110 active:scale-95"
+          style={{ backgroundColor: '#F5C542' }}
+        >
+          네, 시작하기 🎮
+        </button>
+        <button
+          onClick={onNewProfile}
+          className="w-full py-3.5 rounded-xl font-medium transition-all hover:bg-gray-100 active:scale-95"
+          style={{ backgroundColor: '#F5F0E8', color: '#8D7B68' }}
+        >
+          아니요, 동명이인입니다
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const StartScreen: React.FC = () => {
   const setScreen = useGameStore((s) => s.setScreen);
   const soundEnabled = useGameStore((s) => s.soundEnabled);
   const setSoundEnabled = useGameStore((s) => s.setSoundEnabled);
-  const [name, setName] = useState('');
-  const [testCode, setTestCode] = useState('');
-  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
-  // iOS Safari doesn't support the Fullscreen API at all
+  const [name, setName] = useState('');
+  const [branch, setBranch] = useState<Branch | ''>('');
+  const [password, setPassword] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [duplicateStudent, setDuplicateStudent] = useState<StudentRow | null>(null);
+
   const canFullscreen = !!document.documentElement.requestFullscreen;
 
   useEffect(() => {
-    setName(getStudentName());
+    // 마지막 선택 지점 복원
+    const lastBranch = getLastBranch() as Branch | '';
+    if (lastBranch && (BRANCHES as readonly string[]).includes(lastBranch)) {
+      setBranch(lastBranch);
+    }
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
@@ -25,27 +95,113 @@ const StartScreen: React.FC = () => {
 
   const toggleFullscreen = useCallback(async () => {
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch (e) { console.error(e); }
   }, []);
 
-  const handleStart = () => {
-    if (!name.trim()) {
-      alert('이름을 입력해주세요.');
-      return;
+  // 클래스 조회 및 학생 찾기/생성 후 게임 진입
+  const loginAndStart = async (existingStudent?: StudentRow) => {
+    setSubmitting(true);
+    setError('');
+    try {
+      // 1. 반(class) 조회 — 이름에 지점 키워드가 포함된 반 검색
+      const classes = await getClasses();
+      const matchedClass = classes.find(c => c.name.includes(branch));
+
+      // 2. academy_id 결정 (class에 있으면 사용, 없으면 null)
+      const academyId: string | null = (matchedClass as ClassRow & { academy_id?: string })?.academy_id ?? null;
+
+      // 3. 학원 세션 저장 (있을 때만)
+      if (academyId) {
+        // academy 정보는 classes에서 직접 얻기 어려우므로 간단히 세팅
+        setCurrentAcademy({ id: academyId, name: 'TES', code: 'TES' });
+      }
+
+      let student: StudentRow;
+
+      if (existingStudent) {
+        // 동명이인 확인 후 기존 학생 사용
+        student = existingStudent;
+      } else {
+        // 기존 학생 조회 (같은 이름 + 같은 academy)
+        if (academyId) {
+          const found = await findStudent(name.trim(), academyId);
+          if (found) {
+            setDuplicateStudent(found);
+            setSubmitting(false);
+            return;
+          }
+        }
+        // 신규 학생 생성
+        if (academyId) {
+          const created = await createStudentProfile(name.trim(), academyId);
+          student = created ?? { id: 'local_' + Date.now(), name: name.trim(), grade: null, academy_id: academyId };
+        } else {
+          // academy 없는 경우 로컬 임시 프로필
+          student = { id: 'local_' + Date.now(), name: name.trim(), grade: null, academy_id: null };
+        }
+      }
+
+      // 4. 반에 학생 추가
+      if (matchedClass && student.id && !student.id.startsWith('local_')) {
+        await addStudentToClass(matchedClass.id, student.id);
+      }
+
+      // 5. 세션 저장
+      const session: StudentSession = {
+        id: student.id,
+        name: student.name,
+        branch: branch as Branch,
+        academy_id: student.academy_id ?? null,
+        class_id: matchedClass?.id ?? null,
+      };
+      setCurrentStudent(session);
+      saveStudentName(student.name);
+      setLastBranch(branch as Branch);
+
+      // 6. 게임 시작
+      setScreen('curriculumSelect');
+    } catch (err) {
+      console.error(err);
+      setError('로그인에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
     }
-    if (testCode.trim() !== '1234') {
-      alert('응시코드가 올바르지 않습니다.');
-      return;
+  };
+
+  const handleStart = async () => {
+    setError('');
+    if (!name.trim()) { setError('이름을 입력해주세요.'); return; }
+    if (!branch) { setError('반을 선택해주세요.'); return; }
+    if (password !== PASSWORD) { setError('비밀번호가 올바르지 않습니다.'); return; }
+    await loginAndStart();
+  };
+
+  const handleConfirmExisting = async () => {
+    setDuplicateStudent(null);
+    if (duplicateStudent) await loginAndStart(duplicateStudent);
+  };
+
+  const handleNewProfile = async () => {
+    setDuplicateStudent(null);
+    // 이름 중복이어도 새 프로필로 강제 생성
+    setSubmitting(true);
+    try {
+      const classes = await getClasses();
+      const matchedClass = classes.find(c => c.name.includes(branch));
+      const academyId: string | null = (matchedClass as ClassRow & { academy_id?: string })?.academy_id ?? null;
+      const created = academyId
+        ? await createStudentProfile(name.trim(), academyId)
+        : null;
+      const student: StudentRow = created ?? { id: 'local_' + Date.now(), name: name.trim(), grade: null, academy_id: academyId };
+      await loginAndStart(student);
+    } catch (err) {
+      console.error(err);
+      setError('프로필 생성에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
     }
-    saveStudentName(name);
-    setScreen('curriculumSelect');
   };
 
   return (
@@ -56,6 +212,16 @@ const StartScreen: React.FC = () => {
         background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 30%, #FFCC80 60%, #FFB74D 100%)',
       }}
     >
+      {/* 동명이인 확인 모달 */}
+      {duplicateStudent && branch && (
+        <DuplicateModal
+          student={duplicateStudent}
+          branch={branch as Branch}
+          onConfirm={handleConfirmExisting}
+          onNewProfile={handleNewProfile}
+        />
+      )}
+
       {/* Top Right Actions */}
       <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 md:gap-3 z-10">
         <button
@@ -89,47 +255,73 @@ const StartScreen: React.FC = () => {
         🌧️ 산성비 연산 게임
       </h1>
 
-      {/* Name and Code Inputs + Start button */}
+      {/* Login Form */}
       <div className="start-form flex flex-col items-center gap-3 w-72">
+        {/* 이름 */}
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="학생 이름을 입력하세요"
-          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors"
+          onChange={(e) => { setName(e.target.value); setError(''); }}
+          onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+          placeholder="이름"
+          disabled={submitting}
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60"
           style={{ color: '#5D4E37' }}
         />
+
+        {/* 반 선택 드롭다운 */}
+        <select
+          value={branch}
+          onChange={(e) => { setBranch(e.target.value as Branch | ''); setError(''); }}
+          disabled={submitting}
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60 cursor-pointer"
+          style={{ color: branch ? '#5D4E37' : '#A89880' }}
+        >
+          <option value="" disabled>반 선택</option>
+          {BRANCHES.map(b => (
+            <option key={b} value={b}>{b}반</option>
+          ))}
+        </select>
+
+        {/* 비밀번호 */}
         <input
-          type="text"
-          value={testCode}
-          onChange={(e) => setTestCode(e.target.value)}
-          placeholder="응시코드"
-          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors uppercase placeholder:normal-case"
+          type="password"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setError(''); }}
+          onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+          placeholder="비밀번호"
+          disabled={submitting}
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60"
           style={{ color: '#5D4E37' }}
         />
+
+        {/* 에러 메시지 */}
+        {error && (
+          <p className="text-red-500 text-sm font-medium">{error}</p>
+        )}
+
+        {/* 시작 버튼 */}
         <button
           onClick={handleStart}
+          disabled={submitting}
           className="start-btn w-full py-4 px-8 rounded-2xl text-2xl font-bold text-white shadow-lg
-                     transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110 whitespace-nowrap"
+                     transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ backgroundColor: '#F5C542' }}
         >
-          🎮 게임 시작
+          {submitting ? '확인 중...' : '🎮 게임 시작'}
         </button>
       </div>
 
       {/* Teacher page shortcut */}
       <div className="mt-3 md:mt-4">
         <button
-          onClick={() => {
-            window.location.href = '?admin=true';
-          }}
+          onClick={() => { window.location.href = '?admin=true'; }}
           className="text-xs md:text-sm font-medium transition-colors hover:text-amber-700"
           style={{ color: '#8D7B68', textDecoration: 'underline' }}
         >
           선생님 페이지 가기
         </button>
       </div>
-
     </div>
   );
 };
