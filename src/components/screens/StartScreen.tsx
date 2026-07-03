@@ -89,8 +89,8 @@ const StartScreen: React.FC = () => {
         🌧️ 산성비 연산 게임
       </h1>
 
-      {/* Name and Code Inputs + Start button - horizontal on landscape mobile */}
-      <div className="w-72 md:w-auto flex flex-col md:flex-col items-center gap-2 md:gap-3 landscape:flex-row landscape:gap-3 landscape:w-auto">
+      {/* Name and Code Inputs + Start button - horizontal on landscape mobile only */}
+      <div className="w-72 flex flex-col items-center gap-2 landscape:flex-row landscape:gap-3 landscape:w-auto md:flex-col md:w-auto md:gap-4">
         <input
           type="text"
           value={name}
@@ -109,7 +109,7 @@ const StartScreen: React.FC = () => {
         />
         <button
           onClick={handleStart}
-          className="w-full landscape:w-auto py-2 md:py-4 px-8 rounded-2xl text-xl md:text-2xl font-bold text-white shadow-lg
+          className="w-full landscape:w-auto md:w-72 py-2 md:py-4 px-8 rounded-2xl text-xl md:text-2xl font-bold text-white shadow-lg
                      transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110 whitespace-nowrap"
           style={{ backgroundColor: '#F5C542' }}
         >

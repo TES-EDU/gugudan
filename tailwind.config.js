@@ -101,7 +101,7 @@ export default {
   },
   plugins: [
     function({ addVariant }) {
-      addVariant('landscape', '@media (orientation: landscape) and (max-height: 500px)');
+      addVariant('landscape', '@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px)');
     },
   ],
 }
