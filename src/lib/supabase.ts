@@ -300,11 +300,31 @@ export async function deleteStudentMathResults(userName: string): Promise<boolea
 
 export async function deleteAllMathResults(academyId?: string | null): Promise<boolean> {
   if (!academyId) return false;
+  
+  // 먼저 현재 화면에 보이는(또는 소속된) 모든 결과의 ID를 가져옵니다. (테스트용 null 포함)
+  const { data, error: fetchErr } = await supabase
+    .from('math_results')
+    .select('id')
+    .or(`academy_id.eq.${academyId},academy_id.is.null`);
+
+  if (fetchErr || !data) {
+    console.error('Failed to fetch math results for deletion:', fetchErr);
+    return false;
+  }
+
+  const ids = data.map(d => d.id);
+  if (ids.length === 0) return true;
+
+  // ID 배열을 통해 삭제
   const { error } = await supabase
     .from('math_results')
     .delete()
-    .eq('academy_id', academyId);
-  if (error) { console.error('Failed to delete all math results:', error); return false; }
+    .in('id', ids);
+
+  if (error) { 
+    console.error('Failed to delete all math results:', error); 
+    return false; 
+  }
   return true;
 }
 
