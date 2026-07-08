@@ -4,21 +4,21 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/MATHGAME/',
+  base: '/gugudan/',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['BG_img.jpg', '온글잎 박다현체.ttf'],
       manifest: {
-        name: '산성비 연산 게임',
-        short_name: '산성비게임',
-        description: '초등학생을 위한 자연수 사칙연산 산성비 게임',
-        theme_color: '#FFF8F0',
-        background_color: '#FFF8F0',
+        name: 'TES 구구단',
+        short_name: '구구단',
+        description: '초등학생을 위한 구구단 암기 및 연산 게임',
+        theme_color: '#FEFAE0',
+        background_color: '#FEFAE0',
         display: 'standalone',
         orientation: 'landscape',
-        start_url: '/MATHGAME/',
+        start_url: '/gugudan/',
         icons: [
           {
             src: 'icons/icon-192x192.png',
