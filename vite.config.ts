@@ -18,7 +18,7 @@ export default defineConfig({
         background_color: '#FFF8F0',
         display: 'standalone',
         orientation: 'landscape',
-        start_url: '/',
+        start_url: '/MATHGAME/',
         icons: [
           {
             src: 'icons/icon-192x192.png',

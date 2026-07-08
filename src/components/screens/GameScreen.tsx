@@ -4,11 +4,13 @@ import GameArea from '../game/GameArea';
 import InputPanel from '../input/InputPanel';
 import { useGameLoop } from '../../hooks/useGameLoop';
 import { useSound } from '../../hooks/useSound';
+import FlashcardGameScreen from './FlashcardGameScreen';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
 const GameScreen: React.FC = () => {
   const status = useGameStore((s) => s.status);
+  const gameMode = useGameStore((s) => s.gameMode);
   const resumeGame = useGameStore((s) => s.resumeGame);
   const goToResult = useGameStore((s) => s.goToResult);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
@@ -17,12 +19,12 @@ const GameScreen: React.FC = () => {
 
   const [showGameOver, setShowGameOver] = useState(false);
 
-  // Activate game loop
+  // Activate game loop (산성비 모드에서만 실제 동작)
   useGameLoop();
 
   // Handle game over transition
   useEffect(() => {
-    if (status === 'gameOver') {
+    if (status === 'gameOver' && gameMode === 'rain') {
       playGameOver();
       setShowGameOver(true);
       const timer = setTimeout(() => {
@@ -31,7 +33,12 @@ const GameScreen: React.FC = () => {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [status, goToResult, playGameOver]);
+  }, [status, gameMode, goToResult, playGameOver]);
+
+  // 플래시카드 모드면 해당 화면으로 분기 (hooks 이후에)
+  if (gameMode === 'flashcard') {
+    return <FlashcardGameScreen />;
+  }
 
   const handleResume = () => {
     playPause();
@@ -67,8 +74,8 @@ const GameScreen: React.FC = () => {
                 {/* Custom Track Container */}
                 <div className="absolute top-3 left-2 right-2 h-2.5 bg-gray-200 rounded-full" />
                 <div 
-                  className="absolute top-3 left-2 h-2.5 bg-[#F5C542] rounded-full transition-all duration-300" 
-                  style={{ width: `calc(${([0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) / 3) * 100}% - 4px)` }} 
+                  className="absolute top-3 left-2 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `calc(${([0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) / 3) * 100}% - 4px)`, backgroundColor: '#AEBF88' }} 
                 />
 
                 <input 
@@ -87,8 +94,10 @@ const GameScreen: React.FC = () => {
                     return (
                       <div key={idx} className="relative w-0 h-0 flex items-center justify-center">
                         <div className={`absolute rounded-full transition-all duration-300
-                                        ${isActive ? 'w-7 h-7 bg-white border-[6px] border-[#F5C542] shadow-md' : 
-                                          isPassed ? 'w-3.5 h-3.5 bg-[#F5C542]' : 'w-3.5 h-3.5 bg-gray-300'}`} />
+                                        ${isActive ? 'w-7 h-7 bg-white shadow-md' : 
+                                          isPassed ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 bg-gray-300'}`}
+                          style={isActive ? { border: '6px solid #AEBF88' } : isPassed ? { backgroundColor: '#AEBF88' } : {}}
+                        />
                       </div>
                     );
                   })}
@@ -100,7 +109,8 @@ const GameScreen: React.FC = () => {
                     const isActive = [0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) === idx;
                     return (
                       <div key={label} className="relative w-0 flex justify-center">
-                        <span className={`absolute top-0 whitespace-nowrap font-bold transition-all duration-300 ${isActive ? 'text-[#F5C542] text-[13px] scale-110' : 'text-gray-400 text-xs'}`}>
+                        <span className={`absolute top-0 whitespace-nowrap font-bold transition-all duration-300`}
+                          style={{ color: isActive ? '#5C891F' : '#9E9E9E', fontSize: isActive ? '13px' : '11px', transform: isActive ? 'scale(1.1)' : 'scale(1)' }}>
                           {label}
                         </span>
                       </div>
@@ -114,7 +124,7 @@ const GameScreen: React.FC = () => {
                 onClick={() => goToResult()}
                 className="flex-1 px-4 py-3 md:py-4 rounded-2xl text-lg md:text-xl font-bold shadow-md
                            transition-all duration-150 active:scale-95 hover:shadow-lg"
-                style={{ backgroundColor: '#FFFFFF', color: '#5D4E37', border: '2px solid #5D4E37' }}
+                style={{ backgroundColor: '#FFFFFF', color: '#5C4A1E', border: '2px solid #5C4A1E' }}
               >
                 🛑 끝내기
               </button>
@@ -122,7 +132,7 @@ const GameScreen: React.FC = () => {
                 onClick={handleResume}
                 className="flex-[2] px-4 py-3 md:py-4 rounded-2xl text-lg md:text-xl font-bold text-white shadow-lg
                            transition-all duration-150 active:scale-95 hover:shadow-xl"
-                style={{ backgroundColor: '#F5C542' }}
+                style={{ backgroundColor: '#AEBF88' }}
               >
                 ▶️ 계속하기
               </button>

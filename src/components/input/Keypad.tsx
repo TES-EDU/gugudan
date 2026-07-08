@@ -8,6 +8,8 @@ const Keypad: React.FC = () => {
   const appendInput = useGameStore((s) => s.appendInput);
   const deleteInput = useGameStore((s) => s.deleteInput);
   const submitAnswer = useGameStore((s) => s.submitAnswer);
+  const submitFlashcard = useGameStore((s) => s.submitFlashcard);
+  const gameMode = useGameStore((s) => s.gameMode);
   const { playClick, playCorrect, playWrong, playMultiCorrect } = useSound();
 
   const handleNumberPress = (digit: string) => {
@@ -21,6 +23,10 @@ const Keypad: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    if (gameMode === 'flashcard') {
+      submitFlashcard();
+      return;
+    }
     const result = submitAnswer();
     if (result.isCorrect) {
       if (result.matchedCount > 1) {

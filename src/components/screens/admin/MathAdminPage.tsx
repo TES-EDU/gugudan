@@ -10,9 +10,9 @@ type DateFilter = 'all' | 'today' | 'yesterday' | '2daysAgo' | 'custom';
 
 // 반 설정: 이름, 비밀번호, 색상
 const BRANCH_CONFIG = [
-  { name: '하계', password: '3456', color: 'from-emerald-400 to-emerald-600', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '🌿' },
-  { name: '중계', password: '6789', color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: '🌟' },
-  { name: '창동', password: '9012', color: 'from-indigo-400 to-indigo-600', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', icon: '🏔️' },
+  { name: '하계', password: '3456', color: 'from-sage to-sage-dark', bg: 'bg-sb-primary-pale', text: 'text-sb-ink', border: 'border-sb-primary-light', icon: '🌿' },
+  { name: '중계', password: '6789', color: 'from-sage-dark to-[#7A9A5A]', bg: 'bg-sb-surface-alt', text: 'text-sb-ink', border: 'border-sb-primary-mid', icon: '🌾' },
+  { name: '창동', password: '9012', color: 'from-[#8FA86B] to-[#6E8A50]', bg: 'bg-sb-line-soft', text: 'text-sb-ink', border: 'border-sb-primary', icon: '🏔️' },
 ] as const;
 
 function fmtDateTime(dateStr: string | undefined): string {
@@ -159,8 +159,8 @@ export default function AdminPage({ onStudentClick }: Props) {
     <header className="bg-sb-surface border-b border-sb-line px-4 md:px-5 h-14 flex items-center justify-between sticky top-0 z-10">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="w-[22px] h-[22px] rounded-md bg-gradient-to-br from-sb-primary to-sb-primary-dark flex items-center justify-center text-white text-[11px] font-extrabold shrink-0">T</div>
-        <span className="text-sm font-extrabold text-sb-ink truncate md:hidden">{academy?.name || 'TES MATH'}</span>
-        <span className="text-sm font-extrabold text-sb-ink hidden md:inline">TES MATH</span>
+        <span className="text-sm font-extrabold text-sb-ink truncate md:hidden">{academy?.name || 'TES 구구단'}</span>
+        <span className="text-sm font-extrabold text-sb-ink hidden md:inline">TES 구구단</span>
         <div className="w-px h-3 bg-sb-line hidden md:block" />
         <span className="text-xs text-sb-muted font-medium hidden md:inline">· {academy?.name || '관리'}</span>
         {selectedBranch && isBranchUnlocked && (
@@ -191,29 +191,29 @@ export default function AdminPage({ onStudentClick }: Props) {
 
   // ── Branch Selection Screen ──
   const BranchSelectView = () => (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="text-center mb-10">
+    <div className="flex-1 overflow-y-auto">
+      <div className="w-full max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-10">
+        <div className="text-center mb-6 md:mb-10">
           <div className="text-xs font-extrabold tracking-[0.22em] text-sb-primary-dark mb-2">SELECT BRANCH</div>
-          <h1 className="text-3xl font-extrabold text-sb-ink mb-2">반을 선택하세요</h1>
-          <p className="text-sm text-sb-muted">비밀번호를 입력하면 해당 반의 성적을 볼 수 있습니다</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-sb-ink mb-1">반을 선택하세요</h1>
+          <p className="text-xs md:text-sm text-sb-muted">비밀번호를 입력하면 해당 반의 성적을 볼 수 있습니다</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5">
           {BRANCH_CONFIG.map(b => (
             <button
               key={b.name}
               onClick={() => handleBranchSelect(b.name)}
-              className={`relative rounded-2xl border-2 p-6 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+              className={`relative rounded-xl md:rounded-2xl border-2 py-3 px-2 md:p-4 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                 selectedBranch === b.name ? `${b.border} ${b.bg} shadow-md` : 'border-sb-line bg-sb-surface hover:border-sb-primary-light'
               }`}
             >
-              <div className="text-4xl mb-3">{b.icon}</div>
-              <div className={`text-xl font-extrabold mb-1 ${selectedBranch === b.name ? b.text : 'text-sb-ink'}`}>
+              <div className="text-2xl md:text-3xl mb-1">{b.icon}</div>
+              <div className={`text-sm md:text-base font-extrabold ${selectedBranch === b.name ? b.text : 'text-sb-ink'}`}>
                 {b.name}반
               </div>
               {selectedBranch === b.name && (
-                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold" style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }}>
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: 'rgba(93, 78, 55, 0.4)' }}>
                   ✓
                 </div>
               )}
@@ -223,7 +223,7 @@ export default function AdminPage({ onStudentClick }: Props) {
 
         {/* Password input */}
         {selectedBranch && (
-          <div className="max-w-sm mx-auto animate-[fadeIn_0.3s_ease]">
+          <div className="mx-auto max-w-sm animate-[fadeIn_0.3s_ease]">
             <div className="flex gap-2">
               <input
                 type="password"
@@ -231,11 +231,11 @@ export default function AdminPage({ onStudentClick }: Props) {
                 onChange={(e) => { setBranchPassword(e.target.value); setBranchError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleBranchLogin()}
                 placeholder={`${selectedBranch}반 비밀번호`}
-                className="flex-1 h-12 px-4 rounded-xl border-2 border-sb-line bg-sb-surface text-center text-lg font-bold outline-none focus:border-sb-primary transition-colors"
+                className="flex-1 min-w-0 h-11 px-3 rounded-xl border-2 border-sb-line bg-sb-surface text-center text-base font-bold outline-none focus:border-sb-primary transition-colors"
               />
               <button
                 onClick={handleBranchLogin}
-                className="h-12 px-6 rounded-xl bg-sb-primary-dark text-white font-bold text-sm shrink-0 hover:bg-sb-primary transition-colors"
+                className="h-11 px-5 rounded-xl bg-sb-primary-dark text-white font-bold text-sm shrink-0 hover:bg-sb-primary transition-colors"
               >
                 확인
               </button>
@@ -332,7 +332,7 @@ export default function AdminPage({ onStudentClick }: Props) {
   );
 
   return (
-    <div className="h-full bg-sb-bg overflow-y-auto flex flex-col">
+    <div className="min-h-screen bg-sb-bg flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <Header />
       {!selectedBranch || !isBranchUnlocked ? BranchSelectView() : HistoryView()}
     </div>

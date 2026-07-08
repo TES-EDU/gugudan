@@ -25,6 +25,15 @@ const PortraitWarning: React.FC = () => {
       <p className="text-lg text-gray-500 text-center px-8">
         이 게임은 가로 모드에서만 플레이할 수 있습니다
       </p>
+
+      {/* Teacher page shortcut */}
+      <button
+        onClick={() => { window.location.href = '?admin=true'; }}
+        className="mt-10 text-sm text-gray-400 underline hover:text-gray-600 transition-colors"
+        style={{ fontFamily: FONT_FAMILY }}
+      >
+        선생님 페이지 가기
+      </button>
     </div>
   );
 };

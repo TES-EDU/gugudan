@@ -10,27 +10,26 @@ export default {
         game: ["'OwnglyphParkDaHyun'", 'sans-serif'],
       },
       colors: {
-        cream: '#FFF8F0',
-        'cream-dark': '#F5EDE0',
-        'btn-yellow': '#F5C542',
-        'btn-yellow-hover': '#E8B635',
-        'text-brown': '#5D4E37',
-        'text-brown-light': '#8B7355',
-        'border-brown': '#8B7355',
-        'input-gold': '#E8A838',
+        // Golden Summer Fields
+        cream: '#FEFAE0',
+        'cream-dark': '#FAEDCD',
+        'card-bg': '#E9EDC9',
+        sage: '#CCD5AE',
+        'sage-dark': '#AEBF88',
+        bronze: '#D4A373',
+        'bronze-dark': '#BC8C5A',
+        'text-brown': '#5C4A1E',
+        'text-mid': '#8B6E3C',
+        'border-sage': '#C8C39A',
+        // feedback
         'heart-red': '#E74C3C',
         sb: {
-          primary: '#F5C542',
-          'primary-dark': '#E8A838',
-          'primary-mid': '#F5C542',
-          'primary-light': '#FFD54F',
-          'primary-pale': '#FFF8E1',
-          'primary-paler': '#FFFDE7',
-
-          orange: '#FF7043',
-          'orange-dark': '#F4511E',
-          'orange-pale': '#FBE9E7',
-          yellow: '#FFCA28',
+          primary: '#AEBF88',          // Sage-dark — 주 액션
+          'primary-dark': '#8FA86B',    // Deeper Sage — hover/emphasis
+          'primary-mid': '#CCD5AE',     // Sage — 미득튼/배지
+          'primary-light': '#D8E3B8',   // Light Sage — hover 바두
+          'primary-pale': '#EDF2DC',    // Pale Sage — chip 배경
+          'primary-paler': '#F5F8EC',   // Paler Sage — row hover
 
           correct: '#43A047',
           'correct-dark': '#2E7D32',
@@ -41,17 +40,17 @@ export default {
           'wrong-pale': '#FFEBEE',
           'wrong-light': '#EF9A9A',
 
-          bg: '#FFF8F0',
+          bg: '#F5F8EE',               // 연한 Sage 백그라운드
           surface: '#FFFFFF',
-          'surface-alt': '#FDF9F3',
+          'surface-alt': '#EDF2DC',
 
-          ink: '#5D4E37',
-          'ink-mid': '#776757',
-          muted: '#A1887F',
-          'muted-soft': '#BCAAA4',
-          'muted-softer': '#D7CCC8',
-          line: '#EFEBE9',
-          'line-soft': '#F5F5F5',
+          ink: '#3D5229',              // Deep Olive — 주제목
+          'ink-mid': '#5C6E3A',
+          muted: '#7A8F58',
+          'muted-soft': '#9AAD74',
+          'muted-softer': '#C2CFA0',
+          line: '#D8E3B8',
+          'line-soft': '#EDF2DC',
         }
       },
       animation: {

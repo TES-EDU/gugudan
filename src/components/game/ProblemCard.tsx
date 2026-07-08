@@ -47,14 +47,15 @@ const ProblemCard: React.FC<ProblemCardProps> = ({ problem }) => {
                     whitespace-nowrap select-none"
         style={{
           fontFamily: FONT_FAMILY,
-          border: '3px solid #776757',
+          border: '3px solid #CCD5AE',
           borderRadius: '9999px',
+          boxShadow: '0 4px 12px rgba(204,213,174,0.35)',
           animation: entering ? 'fadeScaleIn 0.3s ease-out forwards' : undefined,
         }}
       >
         <span
           className="text-xl md:text-2xl lg:text-3xl font-bold"
-          style={{ color: '#776757' }}
+          style={{ color: '#5C4A1E' }}
         >
           {problem.expression}
         </span>

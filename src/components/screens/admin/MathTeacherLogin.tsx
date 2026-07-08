@@ -29,7 +29,7 @@ export default function MathTeacherLogin({ onLogin: _onLogin, denied: deniedProp
             <span className="text-3xl">👨‍🏫</span>
           </div>
           <h1 className="text-3xl font-extrabold text-sb-ink">선생님 페이지</h1>
-          <p className="text-lg text-sb-muted mt-1">산성비 연산 성적 관리</p>
+          <p className="text-lg text-sb-muted mt-1">구구단 성적 관리</p>
         </div>
 
         {/* Login Card */}

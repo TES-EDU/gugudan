@@ -10,6 +10,7 @@ const InputPanel: React.FC = () => {
   const pauseGame = useGameStore((s) => s.pauseGame);
   const bgmEnabled = useGameStore((s) => s.bgmEnabled);
   const setBgmEnabled = useGameStore((s) => s.setBgmEnabled);
+  const gameMode = useGameStore((s) => s.gameMode);
   const { playPause, playClick } = useSound();
 
   const timeLeft = useGameStore((s) => s.timeLeft);
@@ -39,32 +40,36 @@ const InputPanel: React.FC = () => {
         backgroundColor: '#FFF8E8',
       }}
     >
-      {/* Top left timer */}
-      <div className="absolute top-3 left-3 z-10 flex items-center justify-center">
-        <span
-          className="text-lg md:text-xl font-bold bg-white px-4 py-2 rounded-full shadow-sm"
-          style={{ color: '#776757', border: '3px solid #776757' }}
-        >
-          {formatTime(timeLeft)}
-        </span>
-      </div>
+      {/* Top left timer — 산성비 모드에서만 표시 */}
+      {gameMode === 'rain' && (
+        <div className="absolute top-3 left-3 z-10 flex items-center justify-center">
+          <span
+            className="text-lg md:text-xl font-bold bg-white px-4 py-2 rounded-full shadow-sm"
+            style={{ color: '#776757', border: '3px solid #776757' }}
+          >
+            {formatTime(timeLeft)}
+          </span>
+        </div>
+      )}
 
-      {/* Top right buttons */}
-      <div className="absolute top-3 right-3 z-10 flex gap-2">
-        <button
-          onClick={toggleBgm}
-          className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
-        >
-          {bgmEnabled ? '🎵' : '🔇'}
-        </button>
-        <button
-          onClick={handlePause}
-          className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
-          style={{ color: '#5D4E37' }}
-        >
-          ⏸️
-        </button>
-      </div>
+      {/* Top right buttons — 산성비 모드에서만 표시 */}
+      {gameMode === 'rain' && (
+        <div className="absolute top-3 right-3 z-10 flex gap-2">
+          <button
+            onClick={toggleBgm}
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
+          >
+            {bgmEnabled ? '🎵' : '🔇'}
+          </button>
+          <button
+            onClick={handlePause}
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl transition-all duration-150 active:scale-90 hover:shadow-lg"
+            style={{ color: '#5D4E37' }}
+          >
+            ⏸️
+          </button>
+        </div>
+      )}
 
       {/* Current input area - 30% */}
       <div className="flex-[3] min-h-0 border-b border-amber-200/50">

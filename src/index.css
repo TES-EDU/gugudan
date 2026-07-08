@@ -13,13 +13,18 @@
 
 /* 기본 스타일 */
 :root {
-  --color-cream: #FFF8F0;
-  --color-cream-dark: #F5EDE0;
-  --color-btn-yellow: #F5C542;
-  --color-text-brown: #5D4E37;
-  --color-input-gold: #E8A838;
+  /* Golden Summer Fields palette */
+  --color-cream: #FEFAE0;         /* Cornsilk — main bg */
+  --color-cream-dark: #FAEDCD;    /* Papaya Whip — secondary bg */
+  --color-card-bg: #E9EDC9;       /* Beige — card/panel bg */
+  --color-sage: #CCD5AE;          /* Dry Sage — primary accent */
+  --color-sage-dark: #AEBF88;     /* Darker Sage — PRIMARY ACTION BUTTON */
+  --color-bronze: #D4A373;        /* Light Bronze — secondary accent */
+  --color-bronze-dark: #BC8C5A;   /* Darker bronze — secondary hover */
+  --color-text-brown: #5C4A1E;    /* Olive dark — primary text */
+  --color-text-mid: #8B6E3C;      /* Warm brown — secondary text */
   --color-heart-red: #E74C3C;
-  --color-border-brown: #8B7355;
+  --color-border: #C8C39A;        /* Muted sage border */
 }
 
 * {

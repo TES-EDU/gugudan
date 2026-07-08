@@ -12,6 +12,8 @@ const SettingsScreen: React.FC = () => {
   const setSoundVolume = useGameStore((s) => s.setSoundVolume);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
+  const includeCommutative = useGameStore((s) => s.includeCommutative);
+  const setIncludeCommutative = useGameStore((s) => s.setIncludeCommutative);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -42,38 +44,65 @@ const SettingsScreen: React.FC = () => {
       className="fixed inset-0 flex flex-col items-center overflow-y-auto"
       style={{
         fontFamily: FONT_FAMILY,
-        backgroundColor: '#FFF8F0',
+        background: 'linear-gradient(180deg, #FEFAE0 0%, #FAEDCD 100%)',
       }}
     >
       {/* Header */}
       <div className="w-full flex items-center px-6 pt-6 pb-4">
         <button
-          onClick={() => setScreen('start')}
+          onClick={() => setScreen('curriculumSelect')}
           className="text-2xl px-4 py-2 rounded-xl transition-all duration-150 active:scale-95
                      hover:bg-white/60"
-          style={{ color: '#5D4E37' }}
+          style={{ color: '#5C4A1E' }}
         >
           ← 뒤로
         </button>
       </div>
 
       {/* Title */}
-      <h1 className="text-4xl font-bold mb-10" style={{ color: '#5D4E37' }}>
+      <h1 className="text-4xl font-bold mb-6" style={{ color: '#5C4A1E' }}>
         ⚙️ 설정
       </h1>
 
-      {/* Settings card */}
-      <div className="bg-white rounded-3xl shadow-lg px-8 py-8 max-w-md w-[90%]">
+      <div className="rounded-3xl shadow-lg px-8 py-8 max-w-md w-[90%]" style={{ backgroundColor: 'rgba(255,255,255,0.85)', border: '1.5px solid #E9EDC9' }}>
+        {/* 교환법칙 토글 */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <span className="text-xl font-bold block" style={{ color: '#5C4A1E' }}>
+              🔄 역방향 문제 포함
+            </span>
+            <span className="text-xs" style={{ color: '#8B6E3C' }}>
+              예) 2단에서 7×2도 유출
+            </span>
+          </div>
+          <button
+            onClick={() => setIncludeCommutative(!includeCommutative)}
+            className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
+              includeCommutative ? '' : 'bg-gray-300'
+            }`}
+            style={includeCommutative ? { backgroundColor: '#CCD5AE' } : {}}
+          >
+            <div
+              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                includeCommutative ? 'translate-x-7' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="border-t my-4" style={{ borderColor: '#E9EDC9' }} />
+
         {/* Sound toggle */}
         <div className="flex items-center justify-between mb-6">
-          <span className="text-xl font-bold" style={{ color: '#5D4E37' }}>
+          <span className="text-xl font-bold" style={{ color: '#5C4A1E' }}>
             🔊 효과음
           </span>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
-              soundEnabled ? 'bg-green-400' : 'bg-gray-300'
+              soundEnabled ? '' : 'bg-gray-300'
             }`}
+            style={soundEnabled ? { backgroundColor: '#CCD5AE' } : {}}
           >
             <div
               className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-200 ${
@@ -103,7 +132,7 @@ const SettingsScreen: React.FC = () => {
               onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
               className="w-full h-2 rounded-full appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #F5C542 0%, #F5C542 ${soundVolume * 100}%, #E0D5C5 ${soundVolume * 100}%, #E0D5C5 100%)`,
+                background: `linear-gradient(to right, #AEBF88 0%, #AEBF88 ${soundVolume * 100}%, #E0D5C5 ${soundVolume * 100}%, #E0D5C5 100%)`,
               }}
             />
           </div>
@@ -112,17 +141,16 @@ const SettingsScreen: React.FC = () => {
         {/* Speed Control */}
         <div className="mb-6 mt-6">
           <div className="flex items-center justify-between mb-6">
-            <span className="text-xl font-bold" style={{ color: '#5D4E37' }}>
+            <span className="text-xl font-bold" style={{ color: '#5C4A1E' }}>
               속도 조절
             </span>
           </div>
           <div className="w-full bg-white rounded-2xl px-5 py-6 my-2 shadow-inner">
             <div className="relative mb-6">
-              {/* Custom Track Container */}
               <div className="absolute top-3 left-2 right-2 h-2.5 bg-gray-200 rounded-full" />
               <div 
-                className="absolute top-3 left-2 h-2.5 bg-[#F5C542] rounded-full transition-all duration-300" 
-                style={{ width: `calc(${([0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) / 3) * 100}% - 4px)` }} 
+                className="absolute top-3 left-2 h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `calc(${([0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) / 3) * 100}% - 4px)`, backgroundColor: '#AEBF88' }} 
               />
 
               <input 
@@ -141,8 +169,10 @@ const SettingsScreen: React.FC = () => {
                   return (
                     <div key={idx} className="relative w-0 h-0 flex items-center justify-center">
                       <div className={`absolute rounded-full transition-all duration-300
-                                      ${isActive ? 'w-7 h-7 bg-white border-[6px] border-[#F5C542] shadow-md' : 
-                                        isPassed ? 'w-3.5 h-3.5 bg-[#F5C542]' : 'w-3.5 h-3.5 bg-gray-300'}`} />
+                                      ${isActive ? 'w-7 h-7 bg-white shadow-md' : 
+                                        isPassed ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 bg-gray-300'}`}
+                        style={isActive ? { border: '6px solid #AEBF88' } : isPassed ? { backgroundColor: '#AEBF88' } : {}}
+                      />
                     </div>
                   );
                 })}
@@ -154,7 +184,8 @@ const SettingsScreen: React.FC = () => {
                   const isActive = [0.7, 1.0, 1.5, 2.0].indexOf(speedMultiplier) === idx;
                   return (
                     <div key={label} className="relative w-0 flex justify-center">
-                      <span className={`absolute top-0 whitespace-nowrap font-bold transition-all duration-300 ${isActive ? 'text-[#F5C542] text-[13px] scale-110' : 'text-gray-400 text-xs'}`}>
+                      <span className="absolute top-0 whitespace-nowrap font-bold transition-all duration-300"
+                        style={{ color: isActive ? '#5C891F' : '#9E9E9E', fontSize: isActive ? '13px' : '11px' }}>
                         {label}
                       </span>
                     </div>
@@ -165,19 +196,19 @@ const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-6" />
+        <div className="border-t my-6" style={{ borderColor: '#E9EDC9' }} />
 
         {/* Fullscreen toggle */}
         <div className="flex items-center justify-between mb-6">
-          <span className="text-xl font-bold" style={{ color: '#5D4E37' }}>
+          <span className="text-xl font-bold" style={{ color: '#5C4A1E' }}>
             📱 전체화면
           </span>
           <button
             onClick={toggleFullscreen}
             className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
-              isFullscreen ? 'bg-green-400' : 'bg-gray-300'
+              isFullscreen ? '' : 'bg-gray-300'
             }`}
+            style={isFullscreen ? { backgroundColor: '#CCD5AE' } : {}}
           >
             <div
               className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-200 ${

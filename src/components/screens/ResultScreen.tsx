@@ -6,7 +6,6 @@ import { getStudentName } from '../../utils/storage';
 import { getCurrentStudent } from '../../utils/storage';
 import { saveMathResult } from '../../lib/supabase';
 import type { MathCorrectAnswer, MathIncorrectAnswer } from '../../lib/supabase';
-import type { GradeId } from '../../game/types';
 
 const FONT_FAMILY = "'OwnglyphParkDaHyun', sans-serif";
 
@@ -32,15 +31,19 @@ const ResultScreen: React.FC = () => {
   const resetGame = useGameStore((s) => s.resetGame);
   const startGame = useGameStore((s) => s.startGame);
   const setScreen = useGameStore((s) => s.setScreen);
+  const gameMode = useGameStore((s) => s.gameMode);
+  const flashcardResults = useGameStore((s) => s.flashcardResults);
 
   const [showWrongList, setShowWrongList] = useState(true);
   const [showCorrectList, setShowCorrectList] = useState(false);
   const savedRef = useRef(false);
 
-  const unit = getUnitById(levelId);
-  const gradeId: GradeId = (unit?.gradeId ?? 'G1') as GradeId;
-  const unitDisplayName = unit ? unit.title : levelId;
-  const chapterTitle = gradeId;
+  // GG_ 레벨 전용: unit은 구구단 데이터에서 가져옴
+  const isGugudanLevel = levelId.startsWith('GG_');
+  const unit = isGugudanLevel ? null : getUnitById(levelId);
+  const gradeId = isGugudanLevel ? 'G1' : ((unit?.gradeId ?? 'G1') as string);
+  const unitDisplayName = isGugudanLevel ? levelId : (unit ? unit.title : levelId);
+  const chapterTitle = isGugudanLevel ? '구구단' : gradeId;
 
   const totalAll = correctCount + wrongCount + missedCount;
   const accuracy = totalAll > 0 ? Math.round((correctCount / totalAll) * 100) : 0;
@@ -50,29 +53,41 @@ const ResultScreen: React.FC = () => {
     .filter((t) => !t.tag.startsWith('grade:') && !t.tag.startsWith('chapter:') && !t.tag.startsWith('unit:'))
     .filter((t) => t.rate > 0 && t.total >= 2).slice(0, 5);
 
-  const wrongItems = [
-    ...answeredProblems.filter(p => p.result === 'wrong')
-      .map(p => ({ problemId: p.problemId, expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, kind: 'wrong' as const })),
-    ...missedProblems.map(p => ({ problemId: p.id, expression: p.expression, correctAnswer: p.answer, userAnswer: null, kind: 'missed' as const })),
-  ];
+  let wrongItems: { problemId: string; expression: string; correctAnswer: number; userAnswer: number | null; kind: 'wrong' | 'missed' }[] = [];
+  let correctItems: { expression: string; answer: number }[] = [];
 
-  const correctItems = answeredProblems.filter(p => p.result === 'correct')
-    .map(p => ({ expression: p.expression, answer: p.correctAnswer }));
+  if (gameMode === 'flashcard') {
+    wrongItems = flashcardResults.filter(r => !r.isCorrect).map(r => ({
+      problemId: r.problem.id || '',
+      expression: r.problem.expression,
+      correctAnswer: r.problem.answer,
+      userAnswer: r.userAnswer,
+      kind: 'wrong' as const
+    }));
+    correctItems = flashcardResults.filter(r => r.isCorrect).map(r => ({
+      expression: r.problem.expression,
+      answer: r.problem.answer
+    }));
+  } else {
+    wrongItems = [
+      ...answeredProblems.filter(p => p.result === 'wrong')
+        .map(p => ({ problemId: p.problemId, expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, kind: 'wrong' as const })),
+      ...missedProblems.map(p => ({ problemId: p.id, expression: p.expression, correctAnswer: p.answer, userAnswer: null, kind: 'missed' as const })),
+    ];
+    correctItems = answeredProblems.filter(p => p.result === 'correct')
+      .map(p => ({ expression: p.expression, answer: p.correctAnswer }));
+  }
 
   // Supabase 자동 저장
   useEffect(() => {
     if (savedRef.current) return;
     savedRef.current = true;
     const ca: MathCorrectAnswer[] = correctItems.map(p => ({ expression: p.expression, answer: p.answer, unitId: levelId }));
-    const ia: MathIncorrectAnswer[] = [
-      ...answeredProblems.filter(p => p.result === 'wrong')
-        .map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, result: 'wrong' as const, unitId: levelId })),
-      ...missedProblems.map(p => ({ expression: p.expression, correctAnswer: p.answer, userAnswer: null, result: 'missed' as const, unitId: levelId })),
-    ];
+    const ia: MathIncorrectAnswer[] = wrongItems.map(p => ({ expression: p.expression, correctAnswer: p.correctAnswer, userAnswer: p.userAnswer, result: p.kind, unitId: levelId }));
     const studentName = getStudentName() || '학생';
     const session = getCurrentStudent();
     saveMathResult({
-      user_name: studentName, book_title: 'TES 연산 학습', unit_title: levelId,
+      user_name: studentName, book_title: 'TES 구구단', unit_title: levelId,
       unit_display_name: `${chapterTitle} — ${unitDisplayName}`, grade_id: gradeId,
       total_questions: totalAll, correct_count: correctCount, wrong_count: wrongCount,
       missed_count: missedCount, score, accuracy, max_combo: maxCombo, time_seconds: 180,
@@ -85,32 +100,32 @@ const ResultScreen: React.FC = () => {
   const createdAt = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="fixed inset-0 overflow-y-auto flex flex-col" style={{ fontFamily: FONT_FAMILY, background: '#F1F5F9' }}>
-      {/* ===== VOCATEST 동일: 상단 헤더 ===== */}
-      <header className="bg-white shadow-sm px-4 h-14 flex items-center shrink-0 sticky top-0 z-10">
-        <h1 className="font-bold text-slate-800 truncate">성적표</h1>
+    <div className="fixed inset-0 overflow-y-auto flex flex-col" style={{ fontFamily: FONT_FAMILY, background: 'linear-gradient(180deg, #FEFAE0 0%, #FAEDCD 100%)' }}>
+      {/* ===== 상단 헤더 ===== */}
+      <header className="shadow-sm px-4 h-14 flex items-center shrink-0 sticky top-0 z-10" style={{ backgroundColor: 'rgba(254,250,224,0.95)', backdropFilter: 'blur(8px)', borderBottom: '2px solid #E9EDC9' }}>
+        <h1 className="font-bold truncate" style={{ color: '#5C4A1E' }}>✖️ 구구단 성적표</h1>
       </header>
 
       <div className="p-4 flex-1 pb-8">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 max-w-lg mx-auto">
+        <div className="p-5 rounded-2xl shadow-sm mb-6 max-w-lg mx-auto" style={{ backgroundColor: 'rgba(255,255,255,0.85)', border: '1.5px solid #E9EDC9' }}>
 
-          {/* ===== 헤더: 로고 + 타이틀 (VOCATEST 동일) ===== */}
-          <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+          {/* ===== 헤더 ===== */}
+          <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: '1.5px solid #E9EDC9' }}>
             <div>
-              <p className="text-lg font-extrabold text-indigo-600">TES EDU</p>
-              <p className="text-xs text-slate-400">산성비 연산 게임</p>
+              <p className="text-lg font-extrabold" style={{ color: '#5C891F' }}>TES EDU</p>
+              <p className="text-xs" style={{ color: '#8B6E3C' }}>구구단 마스터</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-400">TES 영어·수학학원</p>
-              <p className="text-sm text-slate-700">{chapterTitle}</p>
+              <p className="text-xs" style={{ color: '#8B6E3C' }}>TES 영어·수학학원</p>
+              <p className="text-sm" style={{ color: '#5C4A1E' }}>{chapterTitle}</p>
             </div>
           </div>
 
           {/* ===== 학생 이름 + 단원 ===== */}
-          <h2 className="text-lg font-bold text-slate-800 mb-1">
-            {getStudentName() || '학생'}의 연산 성적표
+          <h2 className="text-lg font-bold mb-1" style={{ color: '#5C4A1E' }}>
+            {getStudentName() || '학생'}의 구구단 성적표
           </h2>
-          <p className="text-sm text-slate-400 mb-4">{unitDisplayName} · {totalAll}문제</p>
+          <p className="text-sm mb-4" style={{ color: '#8B6E3C' }}>{unitDisplayName} · {totalAll}문제</p>
 
           {/* ===== 나의 진도표 (VOCATEST 동일 레이아웃) ===== */}
           <div className="border border-slate-200 rounded-xl p-4 mb-4">
@@ -147,11 +162,12 @@ const ResultScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* ===== 종합 정답률 카드 (VOCATEST 동일: 보라 그라데이션) ===== */}
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl p-5 mb-4 text-white relative overflow-hidden">
+          {/* ===== 종합 정답률 카드 ===== */}
+          <div className="rounded-xl p-5 mb-4 text-white relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #CCD5AE 0%, #AEBF88 100%)' }}>
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full"></div>
             <div className="relative z-10">
-              <p className="text-indigo-100 text-sm font-medium mb-1">종합 정답률</p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'rgba(92,74,30,0.8)' }}>종합 정답률</p>
               <div className="flex items-end gap-2">
                 <span className="text-5xl font-bold">{accuracy}</span>
                 <span className="text-2xl font-bold mb-1">%</span>
@@ -291,21 +307,23 @@ const ResultScreen: React.FC = () => {
           {/* 다시하기 */}
           <button
             onClick={() => { resetGame(); startGame(); }}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(99,102,241,0.25)] mb-2"
+            className="w-full text-white py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 mb-2 transition-all active:scale-95"
+            style={{ backgroundColor: '#AEBF88', boxShadow: '0 6px 16px rgba(174,191,136,0.4)' }}
           >
             🔄 다시하기
           </button>
 
           {/* 홈으로 */}
           <button
-            onClick={() => { resetGame(); setScreen('start'); }}
-            className="w-full bg-white border border-slate-200 text-slate-600 py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 hover:bg-slate-50"
+            onClick={() => { resetGame(); setScreen('curriculumSelect'); }}
+            className="w-full py-4 rounded-2xl font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95"
+            style={{ backgroundColor: '#FFFFFF', border: '1.5px solid #E9EDC9', color: '#5C4A1E' }}
           >
-            🏠 처음으로 돌아가기
+            🌿 단 선택으로
           </button>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-4">{createdAt}</p>
+        <p className="text-center text-xs mt-4" style={{ color: '#8B6E3C' }}>{createdAt}</p>
       </div>
     </div>
   );

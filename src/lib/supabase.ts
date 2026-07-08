@@ -273,6 +273,7 @@ export async function getAllMathResults(academyId?: string | null): Promise<Math
   let query = supabase
     .from('math_results')
     .select('*')
+    .eq('book_title', 'TES 구구단')   // ← 구구단 앱 전용 결과만
     .order('created_at', { ascending: false });
 
   if (academyId) {

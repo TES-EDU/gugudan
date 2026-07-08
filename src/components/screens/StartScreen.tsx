@@ -209,7 +209,7 @@ const StartScreen: React.FC = () => {
       className="fixed inset-0 flex flex-col items-center justify-center overflow-auto"
       style={{
         fontFamily: FONT_FAMILY,
-        background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 30%, #FFCC80 60%, #FFB74D 100%)',
+        background: 'linear-gradient(135deg, #FEFAE0 0%, #FAEDCD 40%, #E9EDC9 70%, #CCD5AE 100%)',
       }}
     >
       {/* 동명이인 확인 모달 */}
@@ -227,7 +227,7 @@ const StartScreen: React.FC = () => {
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
           className="h-9 md:h-10 px-3 md:px-4 rounded-full bg-white/70 backdrop-blur-sm shadow-sm flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-white/90 hover:shadow-md hover:scale-105 active:scale-95"
-          style={{ color: '#5D4E37' }}
+          style={{ color: '#5C4A1E' }}
         >
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           <span className="text-xs md:text-sm font-bold tracking-tight">{soundEnabled ? '효과음 ON' : '효과음 OFF'}</span>
@@ -248,11 +248,11 @@ const StartScreen: React.FC = () => {
       <h1
         className="start-title text-5xl md:text-6xl lg:text-7xl font-bold mb-8 md:mb-12 text-center"
         style={{
-          color: '#5D4E37',
-          textShadow: '3px 3px 6px rgba(0,0,0,0.15), 0 0 20px rgba(255,193,7,0.3)',
+          color: '#5C4A1E',
+          textShadow: '3px 3px 6px rgba(0,0,0,0.12), 0 0 30px rgba(212,163,115,0.4)',
         }}
       >
-        🌧️ 산성비 연산 게임
+        ✖️ 구구단 마스터
       </h1>
 
       {/* Login Form */}
@@ -265,8 +265,8 @@ const StartScreen: React.FC = () => {
           onKeyDown={(e) => e.key === 'Enter' && handleStart()}
           placeholder="이름"
           disabled={submitting}
-          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60"
-          style={{ color: '#5D4E37' }}
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 outline-none bg-white/90 transition-colors disabled:opacity-60"
+          style={{ color: '#5C4A1E', borderColor: '#C8C39A' }}
         />
 
         {/* 반 선택 드롭다운 */}
@@ -275,7 +275,7 @@ const StartScreen: React.FC = () => {
           onChange={(e) => { setBranch(e.target.value as Branch | ''); setError(''); }}
           disabled={submitting}
           className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60 cursor-pointer"
-          style={{ color: branch ? '#5D4E37' : '#A89880' }}
+          style={{ color: '#5C4A1E', borderColor: '#C8C39A', backgroundColor: 'rgba(200,195,154,0.15)' }}
         >
           <option value="" disabled>반 선택</option>
           {BRANCHES.map(b => (
@@ -291,8 +291,8 @@ const StartScreen: React.FC = () => {
           onKeyDown={(e) => e.key === 'Enter' && handleStart()}
           placeholder="비밀번호"
           disabled={submitting}
-          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 border-amber-200 outline-none focus:border-amber-400 bg-white/90 transition-colors disabled:opacity-60"
-          style={{ color: '#5D4E37' }}
+          className="start-input w-full text-center py-3 px-4 rounded-xl text-xl shadow-md border-2 outline-none bg-white/90 transition-colors disabled:opacity-60"
+          style={{ color: '#5C4A1E', borderColor: '#C8C39A' }}
         />
 
         {/* 에러 메시지 */}
@@ -306,7 +306,7 @@ const StartScreen: React.FC = () => {
           disabled={submitting}
           className="start-btn w-full py-4 px-8 rounded-2xl text-2xl font-bold text-white shadow-lg
                      transition-all duration-150 active:scale-95 hover:shadow-xl hover:brightness-110 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ backgroundColor: '#F5C542' }}
+          style={{ backgroundColor: '#AEBF88' }}
         >
           {submitting ? '확인 중...' : '🎮 게임 시작'}
         </button>
@@ -316,11 +316,24 @@ const StartScreen: React.FC = () => {
       <div className="mt-3 md:mt-4">
         <button
           onClick={() => { window.location.href = '?admin=true'; }}
-          className="text-xs md:text-sm font-medium transition-colors hover:text-amber-700"
-          style={{ color: '#8D7B68', textDecoration: 'underline' }}
+          className="text-xs md:text-sm font-medium transition-colors hover:text-bronze"
+          style={{ color: '#8B6E3C', textDecoration: 'underline' }}
         >
           선생님 페이지 가기
         </button>
+      </div>
+
+      {/* Developer Credit */}
+      <div
+        className="fixed bottom-3 left-4 pointer-events-none select-none"
+        style={{ fontFamily: FONT_FAMILY }}
+      >
+        <p className="text-xs leading-snug" style={{ color: 'rgba(92,74,30,0.35)' }}>
+          © 2026 TES-EDU
+        </p>
+        <p className="text-xs leading-snug" style={{ color: 'rgba(92,74,30,0.35)' }}>
+          Developed by Seojin Lee
+        </p>
       </div>
     </div>
   );

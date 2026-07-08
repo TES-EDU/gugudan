@@ -5,11 +5,30 @@ import { evaluateAnswer, createProblemResult } from '../game/scoring';
 import { generateCurriculumProblem } from '../game/curriculumProblemGenerator';
 import { getUnitById } from '../data/curriculum';
 import { setBestScore, setBestCombo } from '../utils/storage';
+import { generateGugudanProblem, generateFlashcardSequence, getStageById } from '../data/gugudanData';
+import type { GugudanProblem } from '../data/gugudanData';
+
+export type GameMode = 'rain' | 'flashcard';
 
 interface GameStore {
   // 화면 상태
   screen: ScreenType;
   setScreen: (screen: ScreenType) => void;
+
+  // 게임 모드
+  gameMode: GameMode;
+  setGameMode: (mode: GameMode) => void;
+
+  // 설정
+  includeCommutative: boolean;
+  setIncludeCommutative: (v: boolean) => void;
+
+  // 플래시카드 상태
+  flashcardProblems: GugudanProblem[];
+  flashcardIndex: number;
+  flashcardInput: string;
+  flashcardResult: 'idle' | 'correct' | 'wrong';
+  flashcardResults: { problem: GugudanProblem; userAnswer: number | null; isCorrect: boolean }[];
 
   // 게임 상태
   status: GameStatus;
@@ -51,6 +70,9 @@ interface GameStore {
   selectMode: (modeId: string) => void;
   selectLevel: (levelId: string) => void;
   startGame: () => void;
+  startFlashcard: () => void;
+  submitFlashcard: () => void;
+  nextFlashcard: (userAnswer: number | null) => void;
   pauseGame: () => void;
   resumeGame: () => void;
   appendInput: (digit: string) => void;
@@ -75,8 +97,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // 초기 상태
   screen: 'start',
   status: 'ready',
-  modeId: 'add_sub',
-  levelId: 'ADD_01',
+  modeId: 'gugudan',
+  levelId: 'GG_02',
+  gameMode: 'rain',
+  includeCommutative: false,
+  flashcardProblems: [],
+  flashcardIndex: 0,
+  flashcardInput: '',
+  flashcardResult: 'idle',
+  flashcardResults: [],
   score: 0,
   lives: DEFAULT_LIVES,
   combo: 0,
@@ -100,6 +129,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setScreen: (screen) => set({ screen }),
   setTimeLeft: (time) => set({ timeLeft: time }),
+  setGameMode: (mode) => set({ gameMode: mode }),
+  setIncludeCommutative: (v) => set({ includeCommutative: v }),
 
   setGameAreaSize: (width, height) => set({ gameAreaWidth: width, gameAreaHeight: height }),
 
@@ -117,6 +148,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       status: 'playing',
       screen: 'game',
+      gameMode: 'rain',
       score: 0,
       lives: DEFAULT_LIVES,
       combo: 0,
@@ -132,6 +164,71 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastRemoveEvent: null,
       lastWrongEvent: null,
     });
+  },
+
+  startFlashcard: () => {
+    const { levelId, includeCommutative } = get();
+    const problems = generateFlashcardSequence(levelId, includeCommutative);
+    set({
+      status: 'playing',
+      screen: 'game',
+      gameMode: 'flashcard',
+      flashcardProblems: problems,
+      flashcardIndex: 0,
+      flashcardInput: '',
+      flashcardResult: 'idle',
+      flashcardResults: [],
+      score: 0,
+      correctCount: 0,
+      wrongCount: 0,
+      answeredProblems: [],
+      missedProblems: [],
+      lastRemoveEvent: null,
+      lastWrongEvent: null,
+    });
+  },
+
+  submitFlashcard: () => {
+    const { currentInput, flashcardProblems, flashcardIndex } = get();
+    const current = flashcardProblems[flashcardIndex];
+    if (!current || !currentInput) return;
+
+    const userAnswer = parseInt(currentInput, 10);
+    const isCorrect = userAnswer === current.answer;
+    set({ flashcardResult: isCorrect ? 'correct' : 'wrong', currentInput: '' });
+
+    setTimeout(() => {
+      get().nextFlashcard(userAnswer);
+    }, isCorrect ? 700 : 1500);
+  },
+  nextFlashcard: (userAnswer) => {
+    const { flashcardProblems, flashcardIndex, flashcardResults } = get();
+    const current = flashcardProblems[flashcardIndex];
+    if (!current) return;
+
+    const isCorrect = userAnswer === current.answer;
+    const newResults = [...flashcardResults, { problem: current, userAnswer, isCorrect }];
+    const nextIndex = flashcardIndex + 1;
+
+    if (nextIndex >= flashcardProblems.length) {
+      // 플래시카드 완료 → 결과 화면
+      const correctCount = newResults.filter(r => r.isCorrect).length;
+      set({
+        flashcardResults: newResults,
+        flashcardIndex: nextIndex,
+        correctCount,
+        wrongCount: newResults.length - correctCount,
+        screen: 'result',
+        status: 'result',
+      });
+    } else {
+      set({
+        flashcardResults: newResults,
+        flashcardIndex: nextIndex,
+        flashcardInput: '',
+        flashcardResult: 'idle',
+      });
+    }
   },
 
   pauseGame: () => set({ status: 'paused' }),
@@ -211,6 +308,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     if (state.status !== 'playing') return;
 
+    // 구구단 단계인 경우 gugudanData 사용
+    if (state.levelId.startsWith('GG_')) {
+      const stage = getStageById(state.levelId);
+      if (!stage) return;
+
+      // 최대 동시 문제 수: 기본 3개
+      const maxActive = 3;
+      if (state.activeProblems.length >= maxActive) return;
+
+      const generated = generateGugudanProblem(state.levelId, state.includeCommutative);
+      const cardWidth = 160;
+      const maxX = Math.max(state.gameAreaWidth - cardWidth - 10, 10);
+      const x = Math.random() * maxX + 5;
+      const fallSpeed = state.speedMultiplier * 60; // px/sec
+
+      const problem: Problem = {
+        id: `p_${++problemCounter}_${Date.now()}`,
+        expression: generated.expression,
+        answer: generated.answer,
+        operator: '×',
+        x,
+        y: -60,
+        fallSpeed,
+        tags: [`stage:${state.levelId}`],
+        levelId: state.levelId,
+        createdAt: Date.now(),
+      };
+
+      set({ activeProblems: [...state.activeProblems, problem] });
+      return;
+    }
+
+    // 기존 커리큘럼 로직
     const unit = getUnitById(state.levelId);
     if (!unit) return;
     if (state.activeProblems.length >= unit.maxActiveProblems) return;
